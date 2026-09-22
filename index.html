@@ -1,0 +1,1414 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Build an agent harness in Rust through twelve hands-on lessons. Start with functions, then add tools, limits, event logs, and replay. Save your progress locally.">
+<title>Build an agent harness in Rust</title>
+<base target="_blank">
+<style>
+/* A laptop bench manual over several evenings, with phone review between sessions.
+   Reference: an electronics kit construction manual. Preserve the quiet notebook,
+   petrol ink, humanist headings, and zero motion of the local edition. */
+:root{--paper:oklch(96% .018 88);--panel:oklch(92% .022 88);--ink:oklch(25% .012 250);--accent:oklch(39% .065 230);--mute:oklch(44% .015 250);--line:oklch(67% .025 88);--body:"Charter","Bitstream Charter",Georgia,serif;--heading:"Optima","Candara","Segoe UI",sans-serif;--mono:"SFMono-Regular",Consolas,"Liberation Mono",monospace}
+*{box-sizing:border-box}html{scroll-behavior:auto;scroll-padding-block:1rem}body{margin:0;min-height:100dvh;background:var(--paper);color:var(--ink);font:1.08rem/1.65 var(--body)}a{color:var(--accent);text-underline-offset:.2em;overflow-wrap:anywhere}a:hover{text-decoration-thickness:2px}a:active{color:var(--ink)}:focus-visible{outline:3px solid var(--accent);outline-offset:4px}.skip{position:absolute;top:-8rem;left:1rem;padding:.75rem 1rem;background:var(--ink);color:var(--paper);z-index:10}.skip:focus-visible{top:1rem}.shell{display:grid;grid-template-columns:minmax(15rem,20%) minmax(0,1fr);min-height:100dvh}.rail{padding:2rem 1.5rem;border-right:1px solid var(--line);background:var(--panel)}.rail-inner{position:sticky;top:1rem;max-height:calc(100dvh - 2rem);overflow-y:auto;padding:.25rem}.brand{font:700 1.05rem var(--heading);letter-spacing:.015em}.rail nav ol{padding-left:1.5rem;margin:.5rem 0}.rail nav a{display:block;font:1rem/1.35 var(--heading);padding:.65rem .25rem;min-height:44px}.rail nav li::marker{font:.8rem var(--mono);color:var(--mute)}.rail nav p{margin:1rem 0 .25rem}.rail small{font:.87rem/1.5 var(--heading);display:block;margin-block:1rem}.rail summary{font:700 1.08rem var(--heading)}main{min-width:0;padding:clamp(1.25rem,4vw,4rem);max-width:100%}.measure{max-width:72ch;margin-inline:auto}header{padding-bottom:2rem;border-bottom:2px solid var(--ink)}.edition{font:.85rem/1.5 var(--mono);color:var(--mute)}h1,h2,h3,h4{font-family:var(--heading);line-height:1.18;text-wrap:balance}h1{font-size:clamp(2.25rem,5vw,4.5rem);font-weight:600;max-width:18ch;margin:1.5rem 0}h2{font-size:clamp(1.65rem,3vw,2.35rem);margin:0 0 1rem}h3{font-size:1.24rem;margin:1.75rem 0 .6rem}h4{font-size:1.05rem}p,ul,ol,dl{margin-block:.75rem 1.25rem}li+li{margin-top:.4rem}.lede{font-size:1.3rem;line-height:1.5;max-width:55ch}.notice{padding:1rem 1.5rem;background:var(--panel);border:1px solid var(--line);margin-block:1.5rem}.notice p:last-child{margin-bottom:0}.lesson,.front-section,.reference{padding-block:3rem;border-bottom:1px solid var(--line);scroll-margin-block:1rem}.meta{font:.88rem/1.5 var(--mono);color:var(--mute);margin:0 0 1rem}.question{font-size:1.22rem}.diagram{margin:1.5rem 0;padding:1rem 0;border-block:1px solid var(--line)}.flow{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;font:1rem/1.5 var(--mono)}.flow span{padding:.4rem .65rem;background:var(--panel);border:1px solid var(--line)}.flow b{font-weight:400}figcaption{font:.9rem/1.5 var(--heading);color:var(--mute);margin-top:.75rem}code{font:.87em/1.55 var(--mono);overflow-wrap:anywhere}pre{max-width:100%;min-width:0;overflow-x:auto;padding:1rem;background:var(--panel);border:1px solid var(--line);font:.87rem/1.65 var(--mono);tab-size:4;white-space:pre}pre code{font:inherit;overflow-wrap:normal}pre:focus-visible{outline-offset:2px}.file-label{font:.86rem/1.5 var(--mono);color:var(--mute);margin-bottom:.5rem}.expected{font:.9rem/1.5 var(--heading);color:var(--mute)}details{margin-block:1rem;border-block:1px solid var(--line);padding-block:.5rem}details details{border:0;padding-left:1rem}summary{cursor:pointer;font:600 1rem/1.5 var(--heading);padding:.65rem .25rem;min-height:44px}summary:hover{color:var(--accent)}summary:active{background:var(--panel)}details[open]>summary{margin-bottom:.5rem}fieldset{border:0;border-top:1px solid var(--line);padding:1rem 0;margin:1.5rem 0}legend{font:700 1rem var(--heading);padding-right:.75rem}.check{display:flex;align-items:flex-start;gap:.75rem;padding:.6rem .25rem;min-height:44px;font:1rem/1.5 var(--heading);cursor:pointer}.check:has(input:checked){background:var(--panel)}input[type=checkbox]{width:1.2rem;height:1.2rem;flex:none;margin:.15rem 0 0;accent-color:var(--accent)}input:hover{outline:1px solid var(--accent);outline-offset:2px}input:disabled,textarea:disabled{cursor:not-allowed;opacity:.7}textarea{display:block;width:100%;min-height:7rem;resize:vertical;font:1rem/1.55 var(--body);color:var(--ink);background:var(--paper);border:1px solid var(--mute);border-radius:0;padding:.75rem;margin-top:.5rem}textarea:hover{border-color:var(--accent)}textarea:active,textarea:not(:placeholder-shown){background:var(--panel)}textarea[readonly]{background:var(--paper);border-style:dashed}textarea:invalid{border:2px dashed var(--accent)}::placeholder{color:var(--mute);opacity:1}.notes-label{font:600 1rem var(--heading)}.help{font:.9rem/1.5 var(--heading);color:var(--mute)}.compare{font-size:1rem}.source-list li{margin-bottom:1.25rem;overflow-wrap:anywhere}.source-list code{font-size:.8em}.back{font:1rem var(--heading);display:inline-block;padding:.8rem 0;min-height:44px}dt{font-weight:700}dd{margin:0 0 1rem}footer{padding-block:2rem;font:.9rem/1.6 var(--heading);color:var(--mute)}.test-matrix{padding-left:1.5rem}.test-matrix li{margin-block:1rem}button{font:600 1rem/1.4 var(--heading);min-height:44px;padding:.65rem .85rem;color:var(--accent);background:var(--paper);border:1px solid var(--accent);cursor:pointer;white-space:normal}button:hover{background:var(--panel)}button:active{color:var(--ink)}button:disabled{opacity:.6;cursor:not-allowed}.progress-actions{display:flex;flex-wrap:wrap;gap:.75rem;margin-block:1rem}#import-progress{display:block;max-width:100%;width:100%;min-height:44px;margin-top:.75rem;font:1rem var(--heading)}#state p{overflow-wrap:anywhere}[hidden]{display:none!important}
+@media(max-width:850px){.shell{grid-template-columns:1fr}.rail{border-right:0;border-bottom:1px solid var(--line);padding:1rem 1.25rem}.rail-inner{position:static;max-height:none;overflow:visible}.rail nav ol{columns:2;column-gap:2rem}.rail nav li{break-inside:avoid}.rail small{max-width:65ch}main{padding:1.5rem 1.25rem}}@media(max-width:480px){.rail nav ol{columns:1}h1{font-size:2.65rem}.notice{padding:1rem}pre{padding:.75rem;font-size:.8rem}.lesson,.front-section,.reference{padding-block:2rem}.rail nav a{padding-block:.5rem}body{font-size:1.04rem}}@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}@media print{.shell{display:block}.rail,.skip{display:none}main{padding:0}.measure{max-width:none}body{background:white;color:black;font-size:11pt}pre{white-space:pre-wrap;overflow-wrap:anywhere}details{break-inside:avoid}.lesson{break-before:page}}
+/* Architecture additions keep the construction-manual palette and reading measure.
+   Relationships are text, so wrapping never disconnects an arrow from its label. */
+.architecture{margin:1.25rem 0;padding-block:1rem;border-block:1px solid var(--line)}
+.arch-path{display:flex;flex-wrap:wrap;gap:.75rem;align-items:stretch;padding:0;list-style:none;margin:0;font:1rem/1.5 var(--heading)}
+.arch-path li{flex:1 1 10rem;min-width:0;margin:0;padding:.75rem;border:1px solid var(--line);background:var(--panel);overflow-wrap:anywhere}
+.arch-path .current{background:var(--accent);color:var(--paper);border-color:var(--accent)}
+.arch-path .future{background:var(--paper);border-style:dashed}
+.arch-tag{display:block;font-size:.8rem;margin-bottom:.25rem}.arch-path strong{display:block}.arch-edge{display:block;margin-top:.5rem}
+.arch-branch{margin:.75rem 0 0;padding:.5rem 0;font:1rem/1.5 var(--heading)}
+.lesson-context{margin:1.25rem 0 1.75rem}.lesson-context h3{margin-top:0}.lesson-context p{margin-block:.75rem}.lesson-context .architecture{margin-block:1rem}
+.where-am-i{font:.9rem/1.5 var(--heading)}.where-am-i a{display:inline-block;padding-block:.5rem;margin-right:1rem;min-height:44px}
+.arch-map{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1rem;font:1rem/1.5 var(--heading)}
+.arch-map p{margin:0;padding:.75rem;background:var(--panel);border:1px solid var(--line);overflow-wrap:anywhere}.arch-map strong{display:block;margin-bottom:.5rem}
+.roadmap{padding-left:1.5rem}.roadmap li{padding:.75rem 0;border-bottom:1px solid var(--line)}.roadmap a{font-weight:700}.roadmap small{display:block;font:.9rem/1.5 var(--heading);color:var(--mute);margin-top:.25rem}
+.run-walk{padding-left:1.5rem}.run-walk li{padding-block:.5rem}.run-walk samp{font:.9rem/1.6 var(--mono);overflow-wrap:anywhere}
+@media(max-width:600px){.arch-map{grid-template-columns:1fr}.arch-path li{flex-basis:100%}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main" target="_self">Skip to the workshop</a>
+<div class="shell"><aside class="rail"><div class="rail-inner">
+<p class="brand">Agent harness lab / Rust</p>
+<details open><summary>Workshop contents</summary><nav aria-label="Workshop contents">
+<p><a href="#why-harness" target="_self">Why build a harness?</a><a href="#architecture" target="_self">How the parts fit</a><a href="#inventory-run" target="_self">Follow one inventory run</a><a href="#roadmap" target="_self">What each lesson adds</a><a href="#start" target="_self">Set up the project</a></p><ol>
+<li><a href="#l01" target="_self">A function that compiles</a></li>
+<li><a href="#l02" target="_self">Give the model a borrowed view</a></li>
+<li><a href="#l03" target="_self">Match, borrow, loop</a></li>
+<li><a href="#l04" target="_self">Validate before dispatch</a></li>
+<li><a href="#l05" target="_self">Record typed events</a></li>
+<li><a href="#l06" target="_self">Limit work and handle failures</a></li>
+<li><a href="#l07" target="_self">Separate permission</a></li>
+<li><a href="#l08" target="_self">Serialize and replay</a></li>
+<li><a href="#l09" target="_self">Borrow a context window</a></li>
+<li><a href="#l10" target="_self">Assemble a stream</a></li>
+<li><a href="#l11" target="_self">Adapt a provider</a></li>
+<li><a href="#l12" target="_self">Prove an inventory agent</a></li>
+</ol><p><a href="#contracts" target="_self">Contract reference</a><a href="#sources" target="_self">Sources at fixed revisions</a></p>
+</nav></details>
+<small>Complete lessons 1 through 10 and 12 for the core project. Lesson 11 is optional. Start with fake models that return scripted replies, one call at a time. You do not need an API key, the Tokio async runtime, or an agent framework.</small>
+<small>Checks are self-reported, not test results. <a href="#state" target="_self">Export progress</a> before changing browsers or moving this file.</small>
+</div></aside><main id="main" tabindex="-1"><div class="measure">
+<header><p class="edition">Rust course edition 1. Local guide.</p>
+<h1>Build an agent harness in Rust</h1>
+<p class="lede">How do you turn a model's request into a program that actually does something? We'll build an agent harness in Rust, starting with an addition function and working toward an inventory assistant whose actions we can check and replay.</p>
+<p>You can follow along with basic programming experience; you don't need to know Rust or have built an agent before. Each lesson introduces the Rust ideas we'll use for the next part of the program, with small worked examples to try before writing your own implementation. The guide supplies types, fixtures, and some tests. You'll write the harness and the remaining tests, using each lesson's contract to decide what your code needs to do.</p>
+<div class="notice" id="edition-notice"><strong>Updated compiler, same Rust course</strong><p>This update uses Rust language edition 2024. Your existing Rust checklist, notes, and edition 1 backups still work without a reset. Course edition 1 is the backup identity, not the Rust language edition. Earlier Python progress remains untouched in its original browser storage. Python backups cannot mark Rust assignments complete.</p></div>
+<div class="notice" id="state"><strong>Local edition · saved progress</strong>
+<p>This page saves checkboxes and notes in this browser when storage is available. You may lose access to that copy if you move the file, change browsers or profiles, use private browsing, or clear browser data. Use one tab at a time because each save replaces the previous state. Export a backup before moving the file or clearing data. The page sends nothing to a server.</p>
+<p id="completion" role="status" aria-live="polite" aria-atomic="true">Enable JavaScript to count completed checklist items.</p>
+<p id="storage-status" role="status" aria-live="polite">Browser saving has not started. JavaScript is required for saving and backups.</p>
+<div class="progress-actions"><button type="button" id="export-progress" disabled>Export a JSON backup</button></div>
+<label class="notes-label" for="import-progress">Restore a Rust course JSON backup</label>
+<input type="file" id="import-progress" accept=".json,application/json" aria-describedby="restore-help" disabled>
+<p class="help" id="restore-help">Choose a Rust course edition 1 backup, review it, then confirm to replace all 25 checklist items and 12 notes. Export first if you want to keep the current copy. The file can be at most 2 MiB, and each note can contain at most 20,000 characters.</p>
+<p id="backup-status" role="status" aria-live="polite" aria-atomic="true"></p>
+<div id="restore-preview" hidden><p id="restore-summary"></p><div class="progress-actions"><button type="button" id="confirm-restore">Replace progress with this backup</button><button type="button" id="cancel-restore">Cancel restore</button></div></div>
+<noscript><p>JavaScript is disabled. Fields still work for reading, but changes cannot be saved or exported.</p></noscript></div></header>
+<section class="front-section" id="why-harness" aria-labelledby="why-harness-title">
+<h2 id="why-harness-title">Why does a model need a harness?</h2>
+<p class="lede">Suppose you ask, "If I buy 5 washers, how many will I have?" Before adding anything, the program needs to find out how many washers you have now.</p>
+<p>That count lives in your inventory. For our exercise, it's a single in-memory record containing 12. A model can't read the record on its own, so we need a way for it to ask our program for the value. A sentence such as "I checked your inventory" isn't enough; we want an actual lookup and a result we can inspect.</p>
+<p>We'll give the model two <strong>tools</strong>, ordinary functions called lookup and add. The model requests a tool by returning its name and arguments as data. Our <strong>harness</strong> receives that request, checks whether it can run, calls the function, and sends the result back to the model. This is the connection we'll build throughout the course. The model proposes the next step; Rust code performs it.</p>
+<p>By lesson 12, your offline agent will look up 12, add the proposed 5, and answer "12 washers + 5 = 17 washers." A small command-line program, the <strong>host</strong>, starts the run and prints the answer. It also saves a session so you can inspect the two tool calls and three model requests afterward. We're calculating a possible purchase, not making one, so stock stays at 12.</p>
+<h3>Why use a model at all?</h3>
+<p>You probably wouldn't use one for this question alone. A fixed program that calls lookup and then add would be easier to understand and test. And if a task only needs text based on facts already in its request, a single model call may be enough.</p>
+<p>A harness becomes useful when you want a model to choose what to do next based on the task and the results so far. It might ask for a missing fact, try another available tool after an error, or answer once it has enough information. Returning each tool result to the model makes that possible, while the harness keeps control of permission and stopping rules.</p>
+<p>To learn that control flow, we'll use a fake model that returns a fixed script. It won't interpret the question or adapt when stock changes, but it gives us repeatable tests without a network connection or unpredictable replies. Later, a real model can implement the same Model interface, handling provider translation and tool descriptions behind it. We can then evaluate its judgment separately from the loop we've already tested.</p>
+</section>
+<section class="front-section" id="architecture" aria-labelledby="architecture-title">
+<h2 id="architecture-title">Build the connections one at a time</h2>
+<p>We'll use <strong>agent</strong> to mean the whole program: the model, the harness, and the tools working on a task. You don't have to build all of it at once. Start with a function that a test can call, introduce a model that can request that function, then write the loop that connects them. The host gives that loop a user-facing application. If we later use a model service with a different format, a provider adapter will translate its requests and responses.</p>
+<p class="help">Read these diagrams in order. Filled petrol boxes show what we're adding, pale boxes show what's already there, and dashed boxes show future or optional parts. The text labels carry the same information, so you don't need the colors to follow along. Connections show calls or data passing between parts, which can all live in one process.</p>
+<h3>1. A caller invokes a function</h3>
+<figure class="architecture" id="architecture-function" aria-labelledby="architecture-function-caption">
+<ol class="arch-path"><li><span class="arch-tag">Existing caller</span><strong>Test or CLI</strong>Chooses arguments.<span class="arch-edge">Calls add with 2 and 3.</span></li><li class="current"><span class="arch-tag">Add now · lesson 1</span><strong>Function</strong>Computes 5.<span class="arch-edge">Returns 5 to the caller.</span></li></ol>
+<figcaption id="architecture-function-caption">No model yet. Later, the same arithmetic computes 12 + 5 after a stock lookup. Returning a number and printing it are separate jobs.</figcaption></figure>
+<h3>2. Insert a model proposal before the call</h3>
+<figure class="architecture" id="architecture-proposal" aria-labelledby="architecture-proposal-caption">
+<ol class="arch-path"><li><span class="arch-tag">Existing caller</span><strong>Test</strong>Passes messages to the model.<span class="arch-edge">Receives reply data.</span></li><li class="current"><span class="arch-tag">Add now · lesson 2</span><strong>Model interface</strong>Returns a Call or Final reply.<span class="arch-edge">A Call names a function. It does not invoke it.</span></li><li class="future"><span class="arch-tag">Future connection · lesson 3</span><strong>Function</strong>Still callable by ordinary Rust code.<span class="arch-edge">No automatic path from a reply to execution.</span></li></ol>
+<figcaption id="architecture-proposal-caption">The new model boundary exchanges data. The fake proposes add with 2 and 3. Receiving this proposal leaves the function untouched.</figcaption></figure>
+<h3>3. Let the harness decide, execute, and ask again</h3>
+<figure class="architecture" id="architecture-loop" aria-labelledby="architecture-loop-caption">
+<ol class="arch-path"><li><span class="arch-tag">Existing model boundary</span><strong>Model</strong>Receives conversation messages.<span class="arch-edge">Returns Call or Final to the harness.</span></li><li class="current"><span class="arch-tag">Add now · lesson 3</span><strong>Harness loop</strong>Checks the reply. Final ends the run.<span class="arch-edge">A supported Call reaches the function.</span></li><li><span class="arch-tag">Existing function</span><strong>Tool operation</strong>Returns a number or an error.<span class="arch-edge">The harness records it as an observation.</span></li></ol>
+<p class="arch-branch">Return connection. The harness appends the assistant call and its observation to the conversation, then passes that conversation to the next model request.</p>
+<figcaption id="architecture-loop-caption">An observation is a tool result paired with its call ID and name. Lesson 3 implements a restricted add path. Lessons 4, 6, and 7 replace that path with registry dispatch, execution limits, and host permissions.</figcaption></figure>
+<h3>Where the remaining parts attach</h3>
+<p>Once the loop works, we can add ways to inspect it, save its results, and control what the model sees. These parts attach in different places. Tracing watches the loop, sessions preserve its record, and context selection prepares each request. Streams and adapters belong inside model implementations. Use the map below as a reference when a later lesson introduces one of these connections.</p>
+<figure class="architecture" id="architecture-final" aria-labelledby="architecture-final-caption">
+<div class="arch-map">
+<p><strong>Host CLI ⇄ Harness loop</strong>The host passes the user question, registry, Model, and options to run. The harness returns RunResult for display. The host supplies the observer, clock, and cancellation function too.</p>
+<p><strong>Harness → Context selection → Model</strong>Before each attempt, optional selection copies chosen messages from the full transcript. Model borrows the request. Selection does not change the transcript or host permission.</p>
+<p><strong>Model → Reply → Harness</strong>A Final reply ends the run. A Call enters dispatch only after reply and unique-ID checks. StreamingFake assembles complete bytes inside Model. Partial bytes cannot reach dispatch.</p>
+<p><strong>Harness → Checked dispatch → Tool</strong>Find the registered name, validate arguments, check permission, then stop conditions and execution budget. Only then execute. Lookup reads stock. Add computes a number.</p>
+<p><strong>Tool → Observation → Harness messages</strong>The harness appends the call and its result with matching ID and name. These messages feed the next Model request, closing the loop.</p>
+<p><strong>Harness → Event recorder → Observer</strong>This side connection records owned snapshots and sends borrowed events to the observer. The observer reports what happened. It does not approve tools or replace their results.</p>
+<p><strong>Host ⇄ Session file → Validated replay</strong>The host saves completed events. Loading bounds bytes, decodes, and validates before replay reconstructs RunResult. Replay never calls Model or Tool. Saved calls are not new execution instructions.</p>
+<p><strong>Optional Model ⇄ Adapter ⇄ Transport</strong>WireAdapter translates an offline response to Reply. A later real provider implementation also translates messages and describes tools. This is a replacement behind Model, not another stage after tool execution.</p>
+</div>
+<figcaption id="architecture-final-caption">Final connection map. The user supplies a task, not new authority. Model replies and tool results are data the harness checks. Host configuration grants permission. Tool implementations perform operations. These are responsibility boundaries, not an operating-system sandbox.</figcaption></figure>
+<h3>What you write, what the guide supplies</h3>
+<ul><li>You'll write the loop and its checks, starting with one tool and gradually adding the registry, event recorder, stop rules, and permissions. Later lessons add session validation and replay, context selection, stream assembly, and the CLI. Each addition uses the model and tool interfaces you've already built.</li><li>The guide provides types, small worked helpers, scripted replies, and selected test fixtures. You'll fill in the main implementations and most of the named tests. When a snippet is supplied, its label explains what it does and what remains for you to write.</li><li>After setup, the project runs synchronously and offline. Real providers, concurrent work, and stronger production isolation can come later. Lesson 11 is an optional offline adapter exercise if you'd like to explore how a different model format fits.</li></ul>
+<p>There are two things you can save along the way. Your Rust program saves agent events in a session file; this page saves your lesson checkboxes and notes as course progress. Use the page's backup controls for the latter, not for your agent's runs.</p>
+</section>
+<section class="front-section" id="inventory-run" aria-labelledby="inventory-run-title">
+<h2 id="inventory-run-title">Follow the finished inventory run</h2>
+<p>Here's the run we're working toward. You don't need to run anything yet; follow how each result becomes input to the next request. These steps come from the <a href="#rs-inventory" target="_self">lesson 12 script</a> and <a href="#rs-capstone-test" target="_self">capstone test</a>. The test shortens our question to "If I buy 5 washers, how many?" The fake returns the same script either way because it doesn't parse the question.</p>
+<ol class="run-walk">
+<li><strong>The host starts the run.</strong> It supplies that shorter question, the inventory registry, and limits of 3 model attempts and 2 tool executions. The harness stores <samp>User("If I buy 5 washers, how many?")</samp>. With default context selection disabled, request 1 contains only this message.</li>
+<li><strong>The model proposes lookup.</strong> Scripted reply 1 is <samp>Call(c1, lookup, item=Text("washers"))</samp>. The harness validates the reply and new ID, finds lookup, validates item, checks host permission, then checks stop conditions and execution budget. The tool reads the toy record and returns <samp>Ok(12)</samp>. The harness appends <samp>Assistant(call c1)</samp> and <samp>Tool(call_id=c1, name=lookup, outcome=Ok(12))</samp>.</li>
+<li><strong>The harness asks again with evidence.</strong> Request 2 contains the User message, assistant call c1, and lookup observation. The fake returns <samp>Call(c2, add, a=Int(12), b=Int(5))</samp>. Those operands are hard-coded in the fixture. A real model would need to choose them from the question and observation.</li>
+<li><strong>The harness dispatches addition.</strong> It applies the same checks before add executes. The function returns <samp>Ok(17)</samp>. The harness appends <samp>Assistant(call c2)</samp> and <samp>Tool(call_id=c2, name=add, outcome=Ok(17))</samp>. Request 3 now contains five messages, including both call-and-result pairs.</li>
+<li><strong>The model supplies final text.</strong> The script returns <samp>Final("12 washers + 5 = 17 washers.")</samp>. The harness appends that reply and stops with Final status, 3 attempts, 2 executions, and 6 messages. The host prints the result. It can save the completed events and compare a replay without executing either tool again.</li>
+</ol>
+<p>Notice that the messages carry results back to the model. From lesson 5 onward, we'll also keep an event trace for ourselves. ModelRequested and ModelReplied record the requests and replies, while ToolStarted and ToolFinished show which operations ran and what they returned. A rejected call gets ToolRejected instead. RunStarted and RunFinished mark the beginning and end, giving us a record to inspect or replay.</p>
+<p>What if the final answer sounds right but the lookup never ran? <strong>Final is a stopping signal, not proof of a correct answer.</strong> That's why the capstone checks the observations and later requests as well as the text. Try changing stock to 99 without changing the script: it still claims 17. It can make the same claim when permission denies both tools. We'll use those experiments to check the answer against the evidence.</p>
+<p>The return path also carries errors. Unknown or invalid calls produce error observations, as does a tool that executes and fails. A real model could use an error to choose a different next step; our fake keeps following its script. In lesson 6 we'll decide when the harness must stop instead, using budgets, cancellation, and deadlines.</p>
+</section>
+<section class="front-section" id="roadmap" aria-labelledby="roadmap-title">
+<h2 id="roadmap-title">What each lesson adds</h2>
+<p>We'll start with 2 + 3 so the first tests are easy to follow. Each lesson gives the program another capability, with the Rust concepts introduced where you need them. Stock lookup joins the tools in lesson 12, when we're ready to connect the inventory demo.</p>
+<ol class="roadmap">
+<li><a href="#l01" target="_self">Write the operation</a>. Begin with an ordinary function that returns 5 when called with 2 and 3.<small>Rust practice. Functions, types, return values, and tests.</small></li>
+<li><a href="#l02" target="_self">Represent a proposal</a>. Describe messages and requested calls as data, then use a fake model to return them in a predictable order.<small>Rust practice. Structs, enums, ownership, borrows, and traits.</small></li>
+<li><a href="#l03" target="_self">Close the loop</a>. Write run to act on a requested call and include its result in the next model request.<small>Rust practice. Generics, match, and borrow-then-move order.</small></li>
+<li><a href="#l04" target="_self">Dispatch known tools</a>. Replace the single add branch with a registry, and check each tool's arguments before calling it.<small>Rust practice. Result, early returns, Box, and dyn Tool.</small></li>
+<li><a href="#l05" target="_self">Record what happened</a>. Add an event trace so you can inspect the eight events behind the add run, including whether a tool started.<small>Rust practice. Owned snapshots, named variants, and closures.</small></li>
+<li><a href="#l06" target="_self">Bound further work</a>. Decide when another request or execution can start, using budgets, cancellation, and a deadline.<small>Rust practice. Option, Default, and injected callables.</small></li>
+<li><a href="#l07" target="_self">Apply host permission</a>. Let the host choose which registered tools this run may use. Test a denied request without executing its tool.<small>Rust practice. Option versus an empty BTreeSet.</small></li>
+<li><a href="#l08" target="_self">Keep a completed run</a>. Save the events to a session file, validate them when loading, and reconstruct the result without repeating an action.<small>Rust practice. Serialization, owned data, and fallible file I/O.</small></li>
+<li><a href="#l09" target="_self">Choose each request's context</a>. Keep the full transcript while selecting whole message groups that fit the model's input limit.<small>Rust practice. Lifetimes, iterators, and checked arithmetic.</small></li>
+<li><a href="#l10" target="_self">Finish a reply before using it</a>. Assemble byte chunks inside StreamingFake and reject incomplete replies before they can reach a tool.<small>Rust practice. Byte vectors, enums, and consuming iterators.</small></li>
+<li><a href="#l11" target="_self">Translate a provider format, optionally</a>. Try an offline adapter that turns a different response format into the Reply your loop already understands.<small>Rust practice. Generic closures and typed decoding. Off the core path.</small></li>
+<li><a href="#l12" target="_self">Connect the inventory demo</a>. Register lookup and write the host, then check the answer, the two executions, and a matching replay.<small>Rust practice. Modules, integration tests, and host error reporting.</small></li>
+</ol>
+<p><a href="#start" target="_self">Set up the project</a>, then begin with the ordinary function.</p>
+</section>
+<section class="front-section" id="start" aria-labelledby="start-title">
+<h2 id="start-title">Set up a Cargo project</h2>
+<p>Let's get the first test running. You'll need a terminal, an editor, and Rust installed. We'll keep this project separate from the HTML guide and use its own toolchain pin, so following the course won't change your global Rust default. The finished program only uses our invented inventory; it has no shell, arbitrary-file, network, or purchasing tool. Its host chooses session paths, never model arguments.</p>
+<details><summary>Which Rust version are we using, and why?</summary>
+<p>The examples were checked with <code>rustc 1.98.1 (48a229cea 2026-09-01)</code> and <code>cargo 1.98.1 (797e8a9bc 2026-08-05)</code>, using Rust <strong>edition 2024</strong>. The <a href="https://static.rust-lang.org/dist/channel-rust-stable.toml" rel="noopener noreferrer">official stable distribution manifest</a> listed 1.98.1 as stable when retrieved on 20 September 2026, with a release date of 3 September. That tells you when the version was checked, not whether it's still the newest. This page doesn't install anything.</p>
+<p>The <strong>compiler version</strong> and <strong>language edition</strong> are separate settings. The version selects a tool release, while the edition selects compatibility rules for a crate, Rust's unit of compilation. Installing a newer compiler doesn't change a crate's edition because newer compilers can also build older editions. We pin the tested compiler and choose edition 2024; none of the examples needs nightly Rust.</p>
+</details>
+<p>If <code>rustup --version</code> is unavailable, follow the official <a href="https://www.rust-lang.org/tools/install" rel="noopener noreferrer">Rust installation guide</a> for your operating system, then reopen your terminal. It also covers the native linker Rust needs to build executables.</p><p>Lessons 1 through 7 use the standard library. In lesson 8 we'll fetch two JSON dependencies at fixed versions, after which those exercises can run offline too.</p>
+<ol><li>Choose a parent directory for a new project, separate from this HTML.</li><li>Install the exact toolchain below, alongside any existing version. These commands do not change your global default.</li><li>Create the project. <code>cargo new</code> refuses to overwrite an existing destination.</li></ol>
+<pre tabindex="0" aria-label="Cargo setup commands"><code id="cargo-setup">rustup toolchain install 1.98.1 --profile minimal
+rustup component add rustfmt --toolchain 1.98.1
+rustup run 1.98.1 cargo new --lib --edition 2024 harness-lab
+cd harness-lab
+</code></pre>
+<p>Create <code>rust-toolchain.toml</code> in the project directory with your editor. The minimal profile installs the compiler, Cargo, and standard library. You will use the formatter in lesson 12. Clippy is not required.</p>
+<p class="file-label">rust-toolchain.toml · learner-created project pin</p>
+<pre tabindex="0" aria-label="Exact project toolchain pin"><code id="rust-toolchain">[toolchain]
+channel = "1.98.1"
+profile = "minimal"
+components = ["rustfmt"]
+</code></pre>
+<p>Inside this project, rustup selects the pin for plain <code>cargo</code> commands in later lessons. An explicit <code>+1.98.1</code> also selects it, even outside the project. Do not run <code>rustup default</code> or set a directory override to follow this course.</p>
+<pre tabindex="0" aria-label="Verify pinned compiler and project"><code>rustc +1.98.1 --version
+cargo +1.98.1 --version
+cargo +1.98.1 check
+</code></pre>
+<p class="expected">Expect both version lines to start with <code>1.98.1</code> after the tool name, then a successful check. Compare <code>Cargo.toml</code> with the manifest below. Do not add a second package or dependencies section.</p>
+<pre tabindex="0" aria-label="Initial Cargo manifest"><code id="cargo-manifest">[package]
+name = "harness-lab"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+</code></pre>
+<p>A manifest's optional <code>rust-version</code> declares the minimum supported compiler, not an exact version. This tutorial leaves it out because it has not tested older compilers. Keep both <code>rust-toolchain.toml</code> and <code>Cargo.lock</code> with your project. The first fixes the tool versions. The second fixes dependency versions, including packages your dependencies use. These files help you repeat the exercises with the same versions, but do not guarantee identical results on every operating system.</p>
+<p>Now replace the generated <code>src/lib.rs</code> with the starter. Create <code>tests</code> and its test file in your editor. If you already started this Rust course, keep your implementation and lockfile. Add the project pin, change the existing manifest's edition to <code>2024</code>, and rerun your tests. Keep your browser progress and backups.</p>
+<p><code>rustc</code> compiles Rust. <code>cargo</code> manages the package, invokes the compiler, and runs tests. <code>Cargo.toml</code> is its manifest. The package name uses a hyphen; Rust imports use <code>harness_lab</code>. <code>cargo check</code> type-checks without producing your final executable. <code>cargo build</code> produces the configured library or binary artifacts. Neither is a behavioral test.</p>
+<p class="file-label">src/lib.rs · deliberately unfinished starter</p>
+<pre tabindex="0" aria-label="Rust starter function"><code id="rs-starter">pub fn add(a: i64, b: i64) -&gt; i64 {
+    todo!("Lesson 1: implement add")
+}
+</code></pre>
+<p class="file-label">tests/acceptance.rs · executable target</p>
+<pre tabindex="0" aria-label="Rust starter acceptance test"><code id="rs-starter-test">use harness_lab::add;
+
+#[test]
+fn add_examples() {
+    assert_eq!(add(2, 3), 5);
+    assert_eq!(add(-2, 3), 1);
+    assert_eq!(add(0, 0), 0);
+}
+</code></pre>
+<pre tabindex="0" aria-label="Run starter acceptance test"><code>cargo test --test acceptance add_examples -- --exact
+</code></pre>
+<p class="expected">Before you implement the function, expect <code>add_examples ... FAILED</code> and <code>not yet implemented: Lesson 1: implement add</code>. The test compiles but panics when it reaches the placeholder. After lesson 1, expect <code>add_examples ... ok</code> and <code>1 passed; 0 failed</code>. Paths, timing, and output order may differ.</p>
+<h3>One cumulative project, not twelve restarts</h3>
+<pre tabindex="0" aria-label="Rust project layout"><code>harness-lab/
+  Cargo.toml             # edition 2024; JSON dependencies added in L8
+  rust-toolchain.toml     # exact compiler pin, independent of the edition
+  Cargo.lock             # keep resolved dependency versions
+  src/
+    lib.rs               # public modules and re-exports
+    types.rs             # L2 messages, replies, arguments, errors
+    model.rs             # L2 Model trait and FakeModel
+    harness.rs           # L3 run; L5 events; L6 limits; L7 policy
+    tools.rs             # L4 validation and Tool trait; L12 lookup
+    trace.rs             # L5 Event and EventKind
+    session.rs           # L8 versioned save/load and replay
+    context.rs           # L9 borrowed context selection
+    stream.rs            # L10 framing and assembly
+    adapter.rs           # L11 optional wire adapter
+    main.rs              # L12 offline demo
+  tests/
+    acceptance.rs        # public API tests, added each lesson
+</code></pre>
+<p>Create modules only when needed. When adding snippets to an existing file, merge their <code>use</code> lines with your imports rather than importing the same name twice. At lesson 2, add <code>pub mod types; pub mod model;</code> to <code>lib.rs</code>. Later add the other modules similarly. A file is not compiled just because it exists. Put small private-helper tests in the same module under <code>#[cfg(test)] mod tests</code>; put public behavior in <code>tests/acceptance.rs</code>. A test file there is a separate crate and can use only your public API.</p>
+<p>Use these times to plan your sessions, not as deadlines.</p><ul><li>Lessons 1 through 3 take about 3 to 5 hours.</li><li>Lessons 4 through 6 take about 3 to 5 hours.</li><li>Lessons 7 through 9 take about 4 to 6 hours.</li><li>Lessons 10 and 12 take about 3 to 5 hours.</li><li>Optional lesson 11 adds about 1 to 2 hours, before any live-provider setup.</li></ul><p>Compiler experiments may take longer. Finish a session after a passing test so you have a checked version to return to.</p>
+<p>Long code blocks scroll horizontally on narrow screens. Focus a block with Tab, then use arrow keys, or swipe inside the block. Prose and controls stay within the page width.</p>
+<p>Follow the same sequence in each lesson. Predict the result, write the code, and run the named test. Then make the deliberate mistake, observe the failure, and restore the working version. Record what the test or compiler showed.</p><p>Unless the guide supplies a complete test, add each named test to <code>tests/acceptance.rs</code> yourself. Cargo can report success when no tests match, so check how many tests ran. You can run the worked examples. Signatures and traces describe required behavior, but Rust cannot fill in their missing implementations.</p>
+</section>
+<section class="lesson" id="l01" aria-labelledby="t01"><p class="meta">01 / CORE / ESTIMATE 30 to 45 MINUTES</p><h2 id="t01">Start with a function that compiles</h2>
+<div class="lesson-context" aria-labelledby="context-01-title">
+<h3 id="context-01-title">Make the first test pass</h3>
+<p>Setup left you with a test that fails when it reaches the unfinished function. Let's give that function a body. We'll work without a model for now, so you can see exactly which code computes the answer and which code checks it.</p>
+<figure class="architecture" aria-labelledby="context-01-caption"><ol class="arch-path"><li><span class="arch-tag">Existing caller</span><strong>Acceptance test</strong>Calls with two integers.</li><li class="current"><span class="arch-tag">Add now</span><strong>add function</strong>Returns their sum to the caller.</li></ol><figcaption id="context-01-caption">The test calls add directly. A later harness will call it through a tool implementation.</figcaption></figure>
+<p>Write add in src/lib.rs and let tests/acceptance.rs call it with 2 and 3. Once the test gets 5 back, you'll use a practice src/main.rs to print that value. Returning a result and displaying it will stay separate jobs when we add the harness.</p>
+<p class="where-am-i"><a href="#architecture" target="_self">Overall architecture</a><a href="#inventory-run" target="_self">Inventory run</a><a href="#l12" target="_self">Capstone</a></p>
+</div>
+<p class="question">How does a function hand a value back to its caller?</p>
+<p>We'll try a few small programs before filling in add. Pay attention to what each function returns, then use the compiler and tests to check your prediction.</p>
+<figure class="diagram"><div class="flow"><span>caller</span><b>→</b><span>add(2, 3)</span><b>→</b><span>5</span></div><figcaption>Stage 1. A plain function, not yet an agent.</figcaption></figure>
+<h3>Rust concepts for this lesson</h3>
+<h4>Read a function signature</h4>
+<p>Put the unfinished <code>add</code> starter from setup in <code>src/lib.rs</code>. Put its test in <code>tests/acceptance.rs</code>. These are two files in the same Cargo project, not two programs to paste together.</p>
+<p>Read <code>pub fn add(a: i64, b: i64) -&gt; i64 { ... }</code> one part at a time.</p>
+<ul><li><code>fn</code> starts a function definition. <code>add</code> is the name used to call it.</li><li><code>a: i64</code> names a parameter and its type. <code>i64</code> is a signed 64-bit whole number. The comma separates the two parameters.</li><li><code>-&gt; i64</code> declares the value returned to the caller. Rust checks both argument and return types before execution.</li><li>The braces contain the body, the code that runs when called.</li><li><code>pub</code> makes this library function accessible to outside callers, including the integration test.</li></ul>
+<p>The <code>!</code> marks a macro invocation, which expands into Rust code. <code>todo!("...")</code> is a placeholder macro. It compiles, but panics when execution reaches it. <code>println!</code> and <code>assert_eq!</code> are macros too.</p>
+<h4>Return a value in three ways</h4>
+<p>Try each worked program separately in <code>src/main.rs</code>, replacing the previous example. Run it with <code>cargo run --quiet</code> from the project directory. <code>main</code> is the binary's entry function. <code>assert_eq!(actual, expected)</code> checks equality and panics if the values differ. Each program asserts a return value of 7 and prints nothing. None implements your <code>add</code> exercise.</p>
+<p class="file-label">Worked program · tail expression</p>
+<pre tabindex="0" aria-label="Tail expression return"><code id="rs-return-tail">fn seven() -&gt; i64 {
+    7
+}
+fn main() {
+    assert_eq!(seven(), 7);
+}
+</code></pre>
+<p>Notice that the 7 has no semicolon after it. In Rust, the final expression in a block supplies that block's value, so calling seven gives 7 back to <code>main</code>. You don't need to write return for this form. Next, let's compare it with an explicit return.</p>
+<p class="file-label">Worked program · explicit return, independent of the previous program</p>
+<pre tabindex="0" aria-label="Explicit return"><code id="rs-return-explicit">fn seven() -&gt; i64 {
+    return 7;
+}
+fn main() {
+    assert_eq!(seven(), 7);
+}
+</code></pre>
+<p>This time, <code>return</code> tells Rust to leave the function with 7. The semicolon ends the return statement without discarding the value being returned. Both programs give the caller the same result; the next version gives that result a local name first.</p>
+<p class="file-label">Worked program · local binding</p>
+<pre tabindex="0" aria-label="Local binding and return"><code id="rs-return-binding">fn seven() -&gt; i64 {
+    let total = 7;
+    total
+}
+fn main() {
+    assert_eq!(seven(), 7);
+}
+</code></pre>
+<p>Here, <code>let total = 7;</code> gives the value a name before we return it. That statement ends with a semicolon, but the final <code>total</code> expression doesn't, so the function still returns 7. If your usual language requires an explicit return, this may look unfamiliar. Try reading the last line as the value the caller receives. The binding also stays unchanged unless you declare it with <code>mut</code>.</p>
+<p class="file-label">Deliberately broken program · do not keep this version</p>
+<pre tabindex="0" aria-label="Broken semicolon return"><code id="rs-return-broken">fn seven() -&gt; i64 {
+    7;
+}
+fn main() {}
+</code></pre>
+<p class="expected">This version won't compile. Read the mismatch in <code>E0308</code>: the signature promises <code>i64</code>, but the body produces <code>()</code>. Adding the semicolon discards 7 and leaves the block with unit, <code>()</code>, Rust's value for no meaningful result. A function without a declared return type returns unit too. Remove the semicolon here and the body supplies the number its signature promises.</p>
+<h4>Returning is not printing</h4>
+<p class="file-label">Worked program · a value for the caller, then output</p>
+<pre tabindex="0" aria-label="Returning versus printing"><code id="rs-return-print">fn double(n: i64) -&gt; i64 {
+    n * 2
+}
+fn main() {
+    let answer = double(4);
+    assert_eq!(answer, 8);
+    println!("{}", answer);
+}
+</code></pre>
+<p class="expected">This prints exactly <code>8</code> followed by a newline. <code>double</code> returns 8 without printing. <code>println!</code> substitutes the value into <code>{}</code>, writes a line, and returns unit. Your tests need the function's value, not its printout.</p>
+<h4>Read and run the test</h4>
+<p><code>use harness_lab::add;</code> imports the function from your library. <code>::</code> separates path segments. The package is <code>harness-lab</code>, but its Rust crate name is <code>harness_lab</code>. <code>#[test]</code> is an attribute marking a function for the test runner. <code>assert_eq!(add(2, 3), 5)</code> compares the returned value with 5. On failure it panics and shows both values.</p>
+<ul><li><code>cargo check</code> checks types without building final target artifacts. Expect a <code>Finished</code> line. <code>cargo check --tests</code> includes test code.</li><li><code>cargo build</code> produces the configured artifacts. For a library-only project that means a library, not an executable. Adding <code>src/main.rs</code> also gives Cargo a binary target. Expect <code>Finished</code>, not evidence that assertions ran.</li><li><code>cargo test --test acceptance add_examples -- --exact</code> compiles and runs the test. <code>--test acceptance</code> selects <code>tests/acceptance.rs</code>. <code>add_examples</code> is a test-name filter. After <code>--</code>, <code>--exact</code> tells the test harness to match the whole name instead of a substring. After implementation expect <code>test add_examples ... ok</code> and <code>1 passed; 0 failed</code>.</li></ul>
+<p><code>cargo test</code> compiles test files that an ordinary <code>cargo build</code> does not compile. A successful check or build is not a behavioral test.</p>
+<h3>Build</h3><p>Replace <code>todo!</code> with integer addition. Keep printing outside the function. The early contract covers the three small examples, not arbitrary overflowing integers. Lesson 4 limits external input before it reaches this arithmetic.</p>
+<h3>Check</h3><p>Run <code>cargo build</code> and <code>cargo test --test acceptance add_examples -- --exact</code>. Expect one test with three passing assertions. To print a result, replace your practice <code>src/main.rs</code> with <code>fn main() { println!("{}", harness_lab::add(2, 3)); }</code>. <code>cargo run --quiet</code> prints exactly <code>5</code>. Keep this small binary until lesson 12, when you replace its contents with the demo.</p>
+<h3>Break it on purpose</h3><ol><li>Predict what happens if you call <code>add("2", "3")</code>. Put that call in the test and run <code>cargo check --tests</code>. Expect <code>E0308</code> because the arguments have the wrong type. Rust expects <code>i64</code> but finds <code>&amp;str</code>, a borrowed string. Compilation fails, so no tool executes. Restore the integer arguments.</li><li>Add a semicolon after your function's last expression. Expect a return-type error because the body now produces <code>()</code>, Rust's unit value. Remove that semicolon.</li></ol>
+<p><strong>Reflect.</strong> Which mistake was caught before runtime? What evidence would prove an action ran rather than a model merely claiming it ran?</p>
+<details><summary>Hint: return the expression</summary><p>The body needs the two operands and an operator. <code>return</code> is allowed, but not needed for the final expression.</p><details><summary>Why this still needs validation later</summary><p><code>a + b</code> solves this small integer exercise. It does not parse untrusted text, enforce permissions, or promise overflow safety for every <code>i64</code>. Types rule out strings at this function boundary, not every invalid business value.</p></details></details>
+<fieldset><legend>Done when</legend><label class="check"><input type="checkbox" data-progress-key="ahl-v1-l01-build">My Rust starter test passes all three assertions.</label><label class="check"><input type="checkbox" data-progress-key="ahl-v1-l01-experiment">I observed and repaired both compiler errors.</label></fieldset><label class="notes-label" for="n01">Lesson 1 notes · saved locally</label><textarea id="n01" data-progress-key="ahl-v1-l01-notes" placeholder="What did the compiler prove, and what did the test prove?"></textarea>
+</section>
+<section class="lesson" id="l02" aria-labelledby="t02"><p class="meta">02 / CORE / ESTIMATE 60 to 100 MINUTES</p><h2 id="t02">Give the model a borrowed view</h2>
+<div class="lesson-context" aria-labelledby="context-02-title">
+<h3 id="context-02-title">How can a model ask us to call add?</h3>
+<p>We can call add from a test, but a model needs a way to describe that same request. We'll represent its proposed operation as data, then decide what to do with it in the next lesson. That gives us a reason to introduce Rust's structs, enums, and ownership rules.</p>
+<figure class="architecture" aria-labelledby="context-02-caption"><ol class="arch-path"><li><span class="arch-tag">Existing caller</span><strong>Test messages</strong>Pass a borrowed view to Model.</li><li class="current"><span class="arch-tag">Add now</span><strong>Model returns Reply</strong>Call data goes back to the test.</li><li class="future"><span class="arch-tag">Next lesson</span><strong>Harness calls add</strong>No execution connection yet.</li></ol><figcaption id="context-02-caption">The reply names an operation. Only a later caller can turn it into a function call.</figcaption></figure>
+<p>The supplied fake returns a request to add 2 and 3. Put the message and reply types in src/types.rs and the model interface in src/model.rs. For now, tests/acceptance.rs calls the fake directly; in lesson 3, the harness will make those calls and keep the conversation between them.</p>
+<p class="where-am-i"><a href="#architecture" target="_self">Overall architecture</a><a href="#inventory-run" target="_self">Inventory run</a><a href="#l12" target="_self">Capstone</a></p>
+</div>
+<p class="question">What data should the harness own?</p>
+<p>The conversation needs to survive across requests, so the harness will own it. The model only needs to read the messages while preparing a reply, which means it can borrow them instead. We'll explore that distinction with a fake model that returns a fixed script. Receiving one of its tool requests won't execute or authorize anything yet, but we'll be able to test how messages and replies move between caller and model.</p>
+<h3>Rust concepts for this lesson</h3>
+<h4>Own, borrow, or copy</h4>
+<p>Suppose you have some text and want to give it to another part of the program. With a <code>String</code> or <code>Vec</code>, Rust keeps track of which binding owns the value and will drop it when it's no longer needed. Assigning that value to a new binding, or passing it by value, moves ownership rather than making an independent copy. You then use the new owner; to keep two independent values, you must explicitly clone.</p>
+<p>We don't always need to hand ownership over. A <code>String</code> owns growable UTF-8 text, while <code>&amp;str</code> lets another part of the program read the text through a borrowed view. Rust prevents conflicting mutation while that shared borrow is still in use. Integers such as <code>i64</code> work differently: they implement <code>Copy</code>, so assignment copies the value and leaves both names usable. The following program puts these cases side by side.</p>
+<p class="file-label">Worked program · tiny values before conversation data</p>
+<pre tabindex="0" aria-label="Ownership borrow and copy primer"><code id="rs-own-primer">fn main() {
+    let label = String::from("hi");
+    let view = &amp;label;
+    assert_eq!(view, "hi");
+    assert_eq!(label, "hi");
+    let moved = label;
+    assert_eq!(moved, "hi");
+
+    let count: i64 = 2;
+    let copied = count;
+    assert_eq!(count, 2);
+    assert_eq!(copied, 2);
+}
+</code></pre>
+<p class="expected">The program passes every assertion without printing anything. Look at the move halfway through: the earlier assertions can use both the borrow and the original string because the borrow's last use comes before ownership changes. After the move, only the new owner can use the string. Adding <code>println!("{}", label);</code> there produces <code>E0382</code>. The integer assertions both pass because assignment copied the number instead of moving it.</p>
+<p>Those ownership choices now give us a way to design the conversation. Messages will store owned <code>String</code> values so their text can survive the call that created them, while functions that only read temporary input can accept <code>&amp;str</code>. The conversation itself is a <code>Vec&lt;Message&gt;</code>, an ordered collection that can grow. When the model reads it, we'll pass <code>&amp;[Message]</code>, a borrowed slice that leaves ownership with the caller and doesn't allow changes through the slice.</p>
+<h4>Choose a shape for each value</h4>
+<p>A <code>struct</code> groups named fields that exist together. Below, a <code>Call</code> has an <code>id</code>, a <code>name</code>, and <code>args</code>. Construct it with braces and field names. <code>pub</code> on each field lets integration tests inspect it.</p>
+<p>A model reply might be a final answer or a request for a tool. We'll use an <code>enum</code> to describe those alternatives, called variants. For a smaller example, <code>Scalar::Int(2)</code> holds an integer, whereas <code>Reply::Final("5".into())</code> holds final text. The <code>.into()</code> conversion produces the String that the Final variant needs, and the parentheses hold that variant's value.</p>
+<p><code>Result&lt;T, E&gt;</code> is either <code>Ok(value)</code> of type T or <code>Err(error)</code> of type E. For example, <code>Ok(5)</code> can be a successful tool result. <code>Err(ModelError::Exhausted)</code> names a failure rather than panicking.</p>
+<p><code>Option&lt;T&gt;</code> is either <code>Some(value)</code> or <code>None</code>. It describes an optional value without an error reason. An empty reply queue returns <code>None</code>; the fake converts that absence to a named <code>Err</code>.</p>
+<h4>Read the type declarations</h4>
+<p><code>use std::collections::BTreeMap;</code> imports a standard-library map type. A <code>BTreeMap&lt;String, Scalar&gt;</code> maps text keys to scalar values in key order. <code>pub type RawArgs = ...;</code> gives that existing type a public alias, not a new wrapper type.</p>
+<p><code>#[derive(Debug, Clone, PartialEq, Eq)]</code> asks the compiler to generate trait implementations. <code>PartialEq</code> compares values and <code>Debug</code> displays them when <code>assert_eq!</code> fails. <code>Eq</code> marks equality where each value equals itself. <code>Clone</code> permits an explicit owned copy. The strings and collections here clone their contents; use that intentionally for fake request snapshots, not to hide a misplaced borrow.</p>
+<h3>Build</h3><p>Create <code>types.rs</code> with the types below. <code>RawArgs</code> can hold values a tool must reject, such as text where addition needs an integer. You will validate those values in lesson 4. These types are Rust data, not JSON, and do not execute anything. Lesson 8 adds conversion between these values and stored bytes.</p>
+<pre tabindex="0" aria-label="Core Rust domain types"><code id="rs-types">use std::collections::BTreeMap;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Scalar { Int(i64), Text(String), Bool(bool) }
+pub type RawArgs = BTreeMap&lt;String, Scalar&gt;;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Call { pub id: String, pub name: String, pub args: RawArgs }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Reply { Final(String), Call(Call) }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ToolError { UnknownTool, InvalidArguments, Denied, ToolFailed, NotFound }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Observation {
+    pub call_id: String,
+    pub name: String,
+    pub outcome: Result&lt;i64, ToolError&gt;,
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Message {
+    System(String), User(String), Assistant(Reply), Tool(Observation),
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ModelError { Exhausted, Transport, Protocol }
+</code></pre>
+<h4>Read the fake before copying it</h4>
+<p><code>use crate::types::*;</code> imports all accessible names from this crate's <code>types</code> module. <code>crate</code> means the current library, <code>::</code> separates path segments, and <code>*</code> is a wildcard import. It does not import names from every module.</p>
+<p>A <code>trait</code> defines behavior a type must provide. The <code>Model</code> trait requires a <code>complete</code> method. The block <code>impl FakeModel</code> defines the struct's own methods. The block <code>impl Model for FakeModel</code> implements the trait for that struct. In either block, <code>Self</code> means <code>FakeModel</code>, so <code>new</code> returns a new fake.</p>
+<p><code>&amp;self</code> borrows the receiver for reading. <code>&amp;mut self</code> borrows it exclusively so the method can change its fields. Calling <code>complete</code> advances the fake's queue and records a request. The separately borrowed <code>&amp;[Message]</code> cannot be used to mutate your history.</p>
+<p><code>VecDeque&lt;Reply&gt;</code> is a queue that efficiently removes its front item. <code>Vec::new()</code> creates an empty vector; <code>vec![...]</code> creates one with initial elements. <code>messages.to_vec()</code> clones the slice into an owned snapshot. <code>pop_front()</code> returns <code>Some(reply)</code> or <code>None</code>. <code>ok_or(ModelError::Exhausted)</code> converts those to <code>Ok(reply)</code> or the named error.</p>
+<h4>Know the destination of .into()</h4>
+<p>The target type determines the conversion. These are the three conversions used by the fixture, with smaller values you can inspect.</p>
+<p class="file-label">Worked program · explicit destination types</p>
+<pre tabindex="0" aria-label="Three into conversions"><code id="rs-into">use std::collections::{BTreeMap, VecDeque};
+fn main() {
+    let id: String = "c1".into();
+    let queue: VecDeque&lt;i64&gt; = vec![2, 3].into();
+    let args: BTreeMap&lt;String, i64&gt; = [("a".into(), 2)].into();
+    assert_eq!(id, "c1");
+    assert_eq!(queue.front(), Some(&amp;2));
+    assert_eq!(args.get("a"), Some(&amp;2));
+}
+</code></pre>
+<p class="expected">All assertions pass with no output. The literal becomes a <code>String</code>, the vector becomes a <code>VecDeque</code>, and the array of keys paired with values becomes a <code>BTreeMap</code>. In the fake, each field's declared type determines which conversion to use.</p>
+<p class="file-label">model.rs · copyable fake fixture, no harness implementation</p>
+<pre tabindex="0" aria-label="Rust fake model fixture"><code id="rs-model">use std::collections::VecDeque;
+use crate::types::*;
+
+pub trait Model {
+    fn complete(&amp;mut self, messages: &amp;[Message]) -&gt; Result&lt;Reply, ModelError&gt;;
+}
+
+pub struct FakeModel {
+    replies: VecDeque&lt;Reply&gt;,
+    pub requests: Vec&lt;Vec&lt;Message&gt;&gt;,
+}
+impl FakeModel {
+    pub fn new(replies: Vec&lt;Reply&gt;) -&gt; Self {
+        Self { replies: replies.into(), requests: Vec::new() }
+    }
+}
+impl Model for FakeModel {
+    fn complete(&amp;mut self, messages: &amp;[Message]) -&gt; Result&lt;Reply, ModelError&gt; {
+        self.requests.push(messages.to_vec());
+        self.replies.pop_front().ok_or(ModelError::Exhausted)
+    }
+}
+
+pub fn add_script() -&gt; Vec&lt;Reply&gt; {
+    vec![
+        Reply::Call(Call {
+            id: "c1".into(), name: "add".into(),
+            args: [("a".into(), Scalar::Int(2)),
+                   ("b".into(), Scalar::Int(3))].into(),
+        }),
+        Reply::Final("5".into()),
+    ]
+}
+</code></pre>
+<p>This fixture gives us a working fake to test against. It records requests and returns scripted replies; you'll write the validation next and connect tool execution in lesson 3. A passing fake test establishes this one part of the program, rather than a completed harness.</p>
+<div id="match-primer">
+<h4>Read an enum with match</h4>
+<p>Before writing reply validation, let's read a smaller enum. A label is either blank or holds some text. We want a function that returns the text's length without taking ownership of the label.</p>
+<p class="file-label">Worked match example · standalone program</p>
+<pre tabindex="0" aria-label="Borrowed enum match example"><code id="rs-match-primer">enum Label {
+    Blank,
+    Text(String),
+}
+
+fn byte_count(label: &amp;Label) -&gt; usize {
+    match label {
+        Label::Blank =&gt; 0,
+        Label::Text(text) =&gt; text.len(),
+    }
+}
+
+fn main() {
+    let label = Label::Text(String::from("oak"));
+    assert_eq!(byte_count(&amp;Label::Blank), 0);
+    assert_eq!(byte_count(&amp;label), 3);
+    println!("{} bytes", byte_count(&amp;label));
+}
+</code></pre>
+<p class="expected">Both assertions pass, and the program prints <samp>3 bytes</samp>.</p>
+<p>Each line inside <code>match</code> is an <strong>arm</strong>. The pattern before <code>=&gt;</code> describes a case, and the expression after it supplies that case's value. Commas separate the arms. Rust checks the patterns in order and runs the first matching arm.</p>
+<p>The pattern <code>Label::Text(text)</code> opens the Text variant and gives its field the local name <code>text</code>. This is called destructuring. Because we're matching <code>&amp;Label</code>, Rust binds that field as <code>&amp;String</code>, a shared borrow. Calling <code>text.len()</code> reads its UTF-8 byte count without moving the string. That's why main can borrow the same label again for printing.</p>
+<p>A match is an expression, so its chosen arm produces a value. Both arms here produce a <code>usize</code>. There is no semicolon after the match, so that value becomes the function's return value, just like the addition expression in lesson 1. If an arm needs several statements, put them in braces and leave its final value without a semicolon.</p>
+<p>The match is <strong>exhaustive</strong> because it handles both variants. Remove the Blank arm and the compiler reports <code>E0004</code>, even though the label in main holds Text. Restore the arm before continuing. Listing every variant makes Rust point out missing cases if the enum changes later. Use the same approach to inspect a borrowed Reply in your validation function.</p>
+</div>
+<p>Write <code>validate_reply(reply: &amp;Reply) -&gt; Result&lt;(), ModelError&gt;</code> in <code>model.rs</code>. Final text may be empty. Call IDs and names must be nonempty and at most 64 UTF-8 bytes. Leave argument validation for lesson 4. Rust prevents a numeric final text in these types; it does not prevent an empty call ID. Validate that remaining invariant.</p>
+<h3>Check</h3><p>Start <code>fake_contract</code> in <code>tests/acceptance.rs</code> with the assertion below. Notice the import of <code>Model</code>: it brings this trait's methods into scope, which is why <code>model.complete(...)</code> works in the test. Without that import, Rust won't find the method in this example. This rule concerns trait-method syntax; inherent methods and fully qualified trait calls work differently.</p>
+<p class="file-label">tests/acceptance.rs · runnable first assertion; extend this test yourself</p>
+<pre tabindex="0" aria-label="First fake contract assertion"><code id="rs-fake-test">use harness_lab::model::{FakeModel, Model, add_script};
+use harness_lab::types::*;
+
+#[test]
+fn fake_contract() {
+    let mut model = FakeModel::new(add_script());
+    let messages = vec![Message::User("2 + 3?".into())];
+    assert_eq!(model.complete(&amp;messages), Ok(add_script()[0].clone()));
+}
+</code></pre>
+<p>Extend it to prove that two calls return the two replies in order, and a third returns <code>Err(ModelError::Exhausted)</code>. A fresh fake starts again. Check valid replies and an empty ID. Run <code>cargo test fake_contract</code> and verify at least one test executed.</p>
+<p class="file-label">Worked ownership example · standalone program before the move exercise</p>
+<pre tabindex="0" aria-label="Borrow then move worked example"><code id="rs-ownership">fn main() {
+    let answer = String::from("5");
+    let borrowed: &amp;str = &amp;answer;
+    assert_eq!(borrowed.len(), 1);
+    let mut history: Vec&lt;String&gt; = Vec::new();
+    history.push(answer);
+    assert_eq!(history[0], "5");
+}
+</code></pre>
+<p class="expected">Both assertions pass without output, but their order matters. The borrowed text is last used in the length assertion, before <code>push</code> moves the string into the vector. If you tried to use that borrow after the move, the compiler would stop you. The vector owns the string now, so the second assertion reads it there. We'll use this same read-then-move order inside the loop in lesson 3.</p>
+<h3>Break it on purpose</h3><ol><li>Create a vector named <code>messages</code>. Move it with <code>let moved = messages;</code>, then try <code>messages.len()</code>. Predict the compiler's response before running the check. Expect <code>E0382</code> because the old name no longer owns the vector. Replace the move with a borrow, <code>let view = &amp;messages;</code>.</li><li>Call the fake with your original vector, then append a message to that vector. Check that the fake's captured request still has the earlier length. The clone preserves the request as it was when the model received it.</li></ol>
+<p><strong>Reflect.</strong> Why does your model return owned reply data instead of lending a reference into its queue?</p>
+<details><summary>Hint: match both reply variants</summary><p><code>match reply</code> lets you inspect borrowed fields. Check the call's strings and return <code>Ok(())</code> if they meet the requirements.</p><details><summary>Let the compiler find missing variants</summary><p>Rust requires a match to cover every enum variant. List each variant instead of using a catch-all arm here. If you add a variant later, compiler errors show which matches need a new case.</p></details></details>
+<p class="compare">Optional reading, revisit after lesson 3. Compare <a href="https://github.com/badlogic/pi-mono/blob/c596d09d9cef6fdf0db2dd08f3eec8582b7fe8ba/packages/agent/src/agent-loop.ts" rel="noopener noreferrer">Pi's <code>streamAssistantResponse</code></a>. Its context transformation and <code>convertToLlm</code> boundary separate internal messages from provider input. Pi is a TypeScript comparison, not your implementation language.</p>
+<fieldset><legend>Done when</legend><label class="check"><input type="checkbox" data-progress-key="ahl-v1-l02-build">My fake, exhaustion, and reply-validation tests pass.</label><label class="check"><input type="checkbox" data-progress-key="ahl-v1-l02-experiment">I repaired a move error and proved captured requests are snapshots.</label></fieldset><label class="notes-label" for="n02">Lesson 2 notes · saved locally</label><textarea id="n02" data-progress-key="ahl-v1-l02-notes" placeholder="Which values own memory? Which only borrow it?"></textarea>
+</section>
+<section class="lesson" id="l03" aria-labelledby="t03"><p class="meta">03 / CORE / ESTIMATE 75 to 120 MINUTES</p><h2 id="t03">Match, borrow, then close the loop</h2>
+<div class="lesson-context" aria-labelledby="context-03-title">
+<h3 id="context-03-title">Let the model see the tool's result</h3>
+<p>The fake can now ask for addition, and add can compute the answer. Let's connect them. We'll write a loop that reads the model's reply, calls the supported operation, and includes its result when asking the model what to do next. A Final reply ends that conversation.</p>
+<figure class="architecture" aria-labelledby="context-03-caption"><ol class="arch-path"><li><span class="arch-tag">Existing boundary</span><strong>Model</strong>Returns Call or Final.</li><li class="current"><span class="arch-tag">Add now</span><strong>run</strong>A Call reaches add. Final stops.</li><li><span class="arch-tag">Existing operation</span><strong>add</strong>Returns a result to run.</li></ol><p class="arch-branch">Return connection. run appends the call and observation, then sends both to Model in the next request.</p><figcaption id="context-03-caption">The new loop connects proposal, execution, and observation. A turn limit bounds the repeated model requests.</figcaption></figure>
+<p>The key result is in request 2: it should contain the Ok(5) returned by add. Write run in src/harness.rs and move add to src/tools.rs, keeping its public re-export so earlier tests still compile. We'll handle one call per reply with no automatic retries. Lookup can use this same return path when we register it in lesson 12.</p>
+<p class="where-am-i"><a href="#architecture" target="_self">Overall architecture</a><a href="#inventory-run" target="_self">Inventory run</a><a href="#l12" target="_self">Capstone</a></p>
+</div>
+<p class="question">What must the second model call contain?</p>
+<figure class="diagram"><div class="flow"><span>messages → model → reply</span><b>→</b><span>tool</span><b>→</b><span>observation → messages ↺</span></div><figcaption>Stage 2. A final reply ends the run. After a tool call, the harness includes the tool's result in the next model request.</figcaption></figure>
+<h3>Rust concepts for this lesson</h3><p>We want the loop to work with any type that implements Model. Writing <code>run&lt;M: Model&gt;</code> makes it generic over that concrete type, which Rust resolves at compile time. There's no need for <code>Box</code>, <code>dyn</code>, <code>Arc</code>, or async here. The ownership rule from lesson 2 matters inside the loop: borrow a reply to derive its observation, finish using that borrow, then move the reply into history.</p>
+<p>Use the <a href="#rs-ownership" target="_self">borrow-then-move program in lesson 2</a> as your ordering model. <code>user.to_owned()</code> makes an owned String from the borrowed user text.</p>
+<div id="bounded-loop-primer">
+<h4>Repeat work within a limit</h4>
+<p>A <code>for</code> loop can repeat work a bounded number of times. Before connecting the model, try this smaller program that prints page numbers and stops when it reaches the last page.</p>
+<p class="file-label">Worked bounded loop · standalone program</p>
+<pre tabindex="0" aria-label="Bounded page loop example"><code id="rs-bounded-loop">fn print_pages(limit: usize, last_page: usize) -&gt; usize {
+    let mut printed = 0;
+    for index in 0..limit {
+        let page = index + 1;
+        println!("page {}", page);
+        printed += 1;
+        if page == last_page {
+            break;
+        }
+    }
+    printed
+}
+
+fn main() {
+    let printed = print_pages(4, 2);
+    assert_eq!(printed, 2);
+    println!("printed {} pages", printed);
+    assert_eq!(print_pages(0, 2), 0);
+    assert_eq!(print_pages(1, 2), 1);
+}
+</code></pre>
+<p class="expected">The assertions pass. The program prints these four lines.</p>
+<pre tabindex="0" aria-label="Bounded page loop output"><code id="rs-bounded-loop-output">page 1
+page 2
+printed 2 pages
+page 1
+</code></pre>
+<p>The range <code>0..limit</code> includes zero and excludes limit. With a limit of 4, it can yield 0, 1, 2, and 3. The <code>for</code> loop binds each successive value to <code>index</code> and runs the body once for that value. Adding one gives us page numbers starting at 1.</p>
+<p>The counter needs <code>mut</code> because <code>printed += 1</code> changes it after each page. When the page number equals last_page, <code>break;</code> exits the loop immediately. It does not return from the function. Execution continues after the loop, where the final expression returns the counter.</p>
+<p>The first call stops after page 2, before using all four iterations. A zero limit gives an empty range, so the second call prints nothing and returns zero. The third call prints only page 1 because its range ends before page 2. The limit bounds work even when the stopping condition is never reached.</p>
+<p>In your harness, a model attempt is the repeated work. A final reply ends the run early, while an exhausted turn limit prevents another attempt. Use the <a href="#rs-match-primer" target="_self">enum match example</a> to handle each reply variant inside that bounded repetition.</p>
+</div>
+<h3>Build</h3><p>Move <code>add</code> into <code>tools.rs</code>, declare that module, and re-export it with <code>pub use tools::add;</code> so the starter test still works. Create <code>harness.rs</code>. Start with <code>run&lt;M: Model&gt;(model: &amp;mut M, user: &amp;str, max_turns: usize) -&gt; RunResult</code>. Create the types below there. Later lessons add fields and replace the numeric parameter with options.</p>
+<pre tabindex="0" aria-label="Run result types"><code id="rs-result">use crate::types::*;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Status {
+    Final, Budget, Cancelled, Deadline, ModelError, ProtocolError, ContextLimit,
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RunResult {
+    pub status: Status,
+    pub text: String,
+    pub messages: Vec&lt;Message&gt;,
+    pub turns: usize,
+}
+</code></pre>
+<ol><li>Own the input as <code>Message::User(user.to_owned())</code> in a vector.</li><li>Before each attempt, stop if the turn count equals the limit. Increment immediately before <code>complete</code>.</li><li>Handle <code>Err</code> as <code>Status::ModelError</code>. Validate <code>Ok(reply)</code>. A validation failure ends with <code>ProtocolError</code>.</li><li>Match <code>&amp;reply</code>. For this lesson only, accept the exact add fixture's two integer arguments; return an <code>InvalidArguments</code> observation for other add arguments and <code>UnknownTool</code> for another name.</li><li>Build an owned observation from the borrowed call. Move the reply into an assistant message, then append the observation. On final, store its text in the result and append the final reply. One deliberate text clone is reasonable because both result and transcript own it.</li></ol>
+<p>Use an exhaustive <code>match</code> that handles both <code>Reply::Final</code> and <code>Reply::Call</code>, without a catch-all. Remove the Call arm temporarily and run <code>cargo check</code>. Expect <code>E0004</code> for the missing variant, then restore the arm. If you add a reply variant later, this check forces you to decide how the loop handles it.</p>
+<p>Track accepted call IDs in a <code>BTreeSet&lt;String&gt;</code>. Reusing an ID ends with <code>ProtocolError</code> before a second execution; do not append the invalid duplicate as an accepted reply.</p>
+<pre tabindex="0" aria-label="Exact two-turn trace"><code>request 1: [User("2 + 3?")]
+reply 1:   Call(c1, add, a=2, b=3)
+append:    Assistant(call c1), Tool(c1, add, Ok(5))
+request 2: [User, Assistant(call c1), Tool(c1, add, Ok(5))]
+reply 2:   Final("5")
+result:    Final, text="5", turns=2, messages.len()=4
+</code></pre>
+<h3>Check</h3><p>Add <code>loop_contract</code>. Assert the exact second request so the test proves that the model received the tool's result. Check these stopping cases too.</p><ul><li>A fake with only a final reply ends after one attempt with two messages.</li><li>The add script with <code>max_turns=1</code> executes one tool, then returns <code>Budget</code> with empty text and three messages.</li><li>A zero-turn run makes no request. It returns <code>Budget</code>, empty text, zero turns, and exactly one message, the original <code>Message::User</code>.</li></ul>
+<h3>Break it on purpose</h3><p>Remove the observation append. The scripted final still says "5"; the answer-only test passes. Your request-history assertion must fail. Restore the append. Next move the reply into history before reading its call fields. Observe a move or borrow diagnostic. Repair the order, not by cloning the entire conversation.</p>
+<p><strong>Reflect.</strong> Which clone stores real evidence, and which would only hide a poorly placed borrow?</p>
+<details><summary>Hint: finish reading before moving</summary><p>Build an <code>Option&lt;Observation&gt;</code> from a borrowed reply. Once that borrow ends, append the owned reply. Append the observation if present.</p><details><summary>Why keep call IDs?</summary><p>Two calls may use the same tool. An observation answers a specific ID, not just a name. From now on track IDs in a <code>BTreeSet&lt;String&gt;</code>; a repeated ID ends with <code>ProtocolError</code> before any second execution.</p></details></details>
+<p class="compare">After you finish the exercise, compare <a href="https://github.com/badlogic/pi-mono/blob/c596d09d9cef6fdf0db2dd08f3eec8582b7fe8ba/packages/agent/src/agent-loop.ts" rel="noopener noreferrer">Pi's <code>runLoop</code></a>. It appends tool results and also supports steering and follow-up queues. Those queues are not required for your sequential project.</p>
+<fieldset><legend>Done when</legend><label class="check"><input type="checkbox" data-progress-key="ahl-v1-l03-build">Final-only, two-turn, zero-turn, and duplicate-ID cases pass.</label><label class="check"><input type="checkbox" data-progress-key="ahl-v1-l03-experiment">The missing-observation test fails even when the answer stays correct.</label></fieldset><label class="notes-label" for="n03">Lesson 3 notes · saved locally</label><textarea id="n03" data-progress-key="ahl-v1-l03-notes" placeholder="What did request 2 contain? Where did each borrow end?"></textarea>
+</section>
+<section class="lesson" id="l04" aria-labelledby="t04"><p class="meta">04 / CORE / ESTIMATE 60 to 100 MINUTES</p><h2 id="t04">Validate before dispatch</h2>
+<div class="lesson-context" aria-labelledby="context-04-title">
+<h3 id="context-04-title">Choose a tool by name</h3>
+<p>Our loop currently recognizes one exact add request. To support other inputs and eventually lookup, we'd rather register tools than add a new branch to run for each one. We'll introduce a registry that maps names to implementations, then let each tool check its own arguments.</p>
+<figure class="architecture" aria-labelledby="context-04-caption"><ol class="arch-path"><li><span class="arch-tag">Existing loop</span><strong>Accepted Call</strong>run passes it to dispatch.</li><li class="current"><span class="arch-tag">Add now</span><strong>Registry and validator</strong>Find the tool, then check arguments.</li><li><span class="arch-tag">Existing operation</span><strong>Tool execution</strong>Runs only valid input and returns an observation.</li></ol><figcaption id="context-04-caption">Errors return to the loop as observations without running the operation. Permission checks join between validation and execution in lesson 7.</figcaption></figure>
+<p>Keep Tool and Registry in src/tools.rs, and have src/harness.rs dispatch through the registry supplied by its caller. Register AddTool first; lookup can join later without changing that dispatch code. The host or test chooses the entries, so a name in model text can select an existing tool but can't create one.</p>
+<p class="where-am-i"><a href="#architecture" target="_self">Overall architecture</a><a href="#inventory-run" target="_self">Inventory run</a><a href="#l12" target="_self">Capstone</a></p>
+</div>
+<p class="question">Can typed Rust values still represent invalid tool input?</p>
+<p>Yes. <code>Scalar::Text("2".into())</code> is valid Rust data, but addition requires an integer. The registry maps known tool names to implementations. Validation checks whether the supplied values meet a tool's requirements. Neither registration nor validation gives permission to run the tool.</p>
+<h3>Rust concepts for this lesson</h3><p>Use <code>Result</code> when a caller needs to handle failure. In a function that returns Result, <code>?</code> extracts an Ok value or returns an Err to the caller. It does not catch every failure or cause a panic. When you match a reference, the pattern borrows its fields. Read and copy a borrowed <code>i64</code> with <code>*n</code> without cloning the map.</p>
+<p class="file-label">tools.rs · worked helper; you write validate_add</p>
+<pre tabindex="0" aria-label="Fallible integer helper"><code id="rs-validation">use crate::types::*;
+
+fn integer(args: &amp;RawArgs, key: &amp;str) -&gt; Result&lt;i64, ToolError&gt; {
+    let Some(Scalar::Int(n)) = args.get(key) else {
+        return Err(ToolError::InvalidArguments);
+    };
+    if !(-1_000_000..=1_000_000).contains(n) {
+        return Err(ToolError::InvalidArguments);
+    }
+    Ok(*n)
+}
+</code></pre>
+<p><code>let ... else</code> makes the matched value available after the check. A missing key, text value, or boolean causes an early error return. The <code>else</code> block must exit this path, for example with <code>return</code>. It cannot provide a fallback value and continue. The range check then rejects integers outside the allowed bounds.</p><p>Because <code>args.get</code> returns a reference, the pattern also borrows the fields. The variable <code>n</code> has type <code>&amp;i64</code>. You need no extra <code>ref</code>. Edition 2024 restricts redundant binding modifiers in borrowed patterns like this one. Use the plain pattern shown above.</p>
+<h3>Build</h3><p>Write <code>validate_add(args: &amp;RawArgs) -&gt; Result&lt;(i64, i64), ToolError&gt;</code>. Require exactly two keys, <code>a</code> and <code>b</code>, then use <code>integer(args, "a")?</code> and its counterpart. Two admitted operands cannot overflow <code>i64</code>. Do not coerce text or booleans.</p>
+<p>Add this small boundary to <code>tools.rs</code>. Implement it for <code>AddTool</code>. Keep validation separate so the harness can check policy between validation and execution. <code>execute</code> may revalidate defensively using the same helper; only the body doing the operation counts as execution.</p>
+<pre tabindex="0" aria-label="Rust tool trait and registry"><code id="rs-tool-trait">pub trait Tool {
+    fn validate(&amp;self, args: &amp;RawArgs) -&gt; Result&lt;(), ToolError&gt;;
+    fn execute(&amp;mut self, args: &amp;RawArgs) -&gt; Result&lt;i64, ToolError&gt;;
+}
+pub type Registry = std::collections::BTreeMap&lt;String, Box&lt;dyn Tool&gt;&gt;;
+</code></pre>
+<p><code>Box</code> owns a value on the heap. <code>dyn Tool</code> lets one registry store different tool implementations. Rust selects the method implementation at runtime. This is useful for tools and test spies, which record whether a tool executed. You do not need a trait for every struct. Keep the model generic because each run uses one model type. An enum that selects between tools is also reasonable if your app will always have just two tools.</p>
+<p>Replace the loop's hard-coded branch with <code>dispatch(call: &amp;Call, registry: &amp;mut Registry) -&gt; Observation</code>. Add <code>registry: &amp;mut Registry</code> immediately after <code>user</code> in <code>run</code>, and update earlier callers to pass a registry containing AddTool. Look up the name, validate arguments, execute only if valid, and preserve the call ID and name in every observation. The registry is an explicit host-owned map, never reflection or arbitrary executable lookup.</p>
+<pre tabindex="0" aria-label="Tool validation outcomes"><code>add(a=Int(2), b=Int(3))              → Ok(5)
+add(a=Text("2"), b=Int(3))           → Err(InvalidArguments)
+add(a=Bool(true), b=Int(3))          → Err(InvalidArguments)
+add(a=Int(2), b=Int(3), c=Int(4))    → Err(InvalidArguments)
+add(a=Int(1_000_001), b=Int(0))      → Err(InvalidArguments)
+unknown name                        → Err(UnknownTool)
+</code></pre>
+<h4>Keep a handle to a test spy</h4>
+<p>Before writing the validation test, try this helper in <code>tests/acceptance.rs</code>. A plain counter inside a tool moves into the registry with the tool. <code>Rc</code> instead gives the test and the tool shared, reference-counted handles to one allocation. <code>Rc::clone</code> clones the handle, not the count. <code>Cell</code> lets either handle read or replace a small Copy value with <code>get</code> and <code>set</code>.</p>
+<p class="file-label">Worked integration test · spy mechanics only, not dispatch</p>
+<pre tabindex="0" aria-label="Shared spy counter after boxing"><code id="rs-spy">use std::{cell::Cell, rc::Rc};
+use harness_lab::tools::{Registry, Tool};
+use harness_lab::types::{RawArgs, ToolError};
+
+struct SpyTool { calls: Rc&lt;Cell&lt;usize&gt;&gt; }
+impl Tool for SpyTool {
+    fn validate(&amp;self, args: &amp;RawArgs) -&gt; Result&lt;(), ToolError&gt; {
+        if args.is_empty() { Ok(()) }
+        else { Err(ToolError::InvalidArguments) }
+    }
+    fn execute(&amp;mut self, _args: &amp;RawArgs) -&gt; Result&lt;i64, ToolError&gt; {
+        self.calls.set(self.calls.get() + 1);
+        Ok(0)
+    }
+}
+#[test]
+fn spy_handle_survives_move() {
+    let calls = Rc::new(Cell::new(0));
+    let mut registry = Registry::new();
+    registry.insert("spy".into(), Box::new(SpyTool {
+        calls: Rc::clone(&amp;calls),
+    }));
+    assert_eq!(calls.get(), 0);
+    let tool = registry.get_mut("spy").expect("fixture exists");
+    assert_eq!(tool.execute(&amp;RawArgs::new()), Ok(0));
+    assert_eq!(calls.get(), 1);
+}
+</code></pre>
+<p class="expected">The counter is 0 after registration and 1 after the direct execution. The test still reads it after the registry owns the boxed tool. <code>expect</code> is appropriate here because the test just inserted that entry. Your dispatch tests must prove that invalid input leaves the counter at 0 and valid input increments it.</p>
+<p>This is a single-threaded, test-only technique, not the conversation's ownership model or a concurrent tool design. The shared handles do not make arbitrary shared mutation safe. Keep validation and dispatch as your own implementation.</p>
+<h3>Check</h3><p>Add <code>validation_contract</code> for every case in the trace, missing keys, and both inclusive bounds. Use a test-only tool with an execution counter. Invalid requests must leave the counter unchanged. For a rejected call followed by a final reply, assert that request 2 contains the error observation. Run <code>cargo test validation_contract</code>.</p>
+<h3>Break it on purpose</h3><ol><li>Replace the <code>let ... else</code> guard's early <code>return Err(...)</code> with <code>Err(...)</code>. Expect <code>E0308</code> because this branch must exit rather than produce a value and continue. Restore the return.</li><li>Replace the key-count check with only two lookups. The validator now accepts an extra key. Confirm that the extra-key test fails, then restore the check.</li><li>Replace a <code>?</code> with <code>unwrap()</code> and pass text as an argument. Observe the panic, then restore <code>?</code> so the function returns an error instead. A panic can signal a failed test assertion, but your harness must handle invalid input without one.</li></ol>
+<p><strong>Reflect.</strong> Where do the types prevent an invalid value? Which invalid values can you still construct and must reject at runtime?</p>
+<details><summary>Hint: validation returns data, not an effect</summary><p>Require <code>args.len() == 2</code> before extracting both named values. A missing required key still fails. Keep error codes stable.</p><details><summary>Why not a schema framework?</summary><p>Two small tools need two explicit validators. Generic schemas, plugin discovery, and arbitrary JSON trees can wait until they remove real duplication.</p></details></details>
+<p class="compare">After you finish the exercise, read <a href="https://github.com/openai/codex/blob/5ee2bdf1e0e04064bc427ae31a49a01e8f7064df/codex-rs/core/src/tools/registry.rs" rel="noopener noreferrer">Codex's pinned Rust registry</a>. Its <code>CoreToolRuntime: ToolExecutor&lt;ToolInvocation&gt;</code> trait adds core metadata and hooks, and methods borrow <code>&amp;dyn ToolOutput</code>. Find those declarations before reading their bodies. Your trait deliberately omits shared ownership, futures, and hooks. This is a boundary comparison, not equivalent security.</p>
+<fieldset><legend>Done when</legend><label class="check"><input type="checkbox" data-progress-key="ahl-v1-l04-build">My tests confirm that invalid arguments and unknown tools never execute the spy.</label><label class="check"><input type="checkbox" data-progress-key="ahl-v1-l04-experiment">I observed invalid input failures, then restored validation.</label></fieldset><label class="notes-label" for="n04">Lesson 4 notes · saved locally</label><textarea id="n04" data-progress-key="ahl-v1-l04-notes" placeholder="Why use dyn Tool here but a generic Model in run?"></textarea>
+</section>
+<section class="lesson" id="l05" aria-labelledby="t05"><p class="meta">05 / CORE / ESTIMATE 60 to 90 MINUTES</p><h2 id="t05">Record typed events</h2>
+<div class="lesson-context" aria-labelledby="context-05-title">
+<h3 id="context-05-title">What happened before the answer?</h3>
+<p>Suppose a tool request is rejected, but the fake's final reply still says "5." The error observation tells the model what went wrong. For our own inspection, we'd also like to know which steps the harness attempted and whether the tool ever started. We'll keep that ordered event trace beside the conversation, without changing the loop's decisions.</p>
+<figure class="architecture" aria-labelledby="context-05-caption"><ol class="arch-path"><li><span class="arch-tag">Existing control</span><strong>Harness loop</strong>Requests model replies and dispatches tools.</li><li class="current"><span class="arch-tag">Add now · observer connection</span><strong>Event recorder</strong>Stores snapshots and passes each event to an observer.</li></ol><p class="arch-branch">The model and tool results still return to the loop. The recorder observes those steps. It is not a new step that model input passes through.</p><figcaption id="context-05-caption">The observer receives a borrowed event. It does not approve a call or replace its result.</figcaption></figure>
+<p>Define the events in src/trace.rs and record them from src/harness.rs in RunResult. The add run will give us eight events to check. We'll also let the caller supply an observer, so a test can count callbacks and the later CLI can display events as they arrive.</p>
+<p class="where-am-i"><a href="#architecture" target="_self">Overall architecture</a><a href="#inventory-run" target="_self">Inventory run</a><a href="#l12" target="_self">Capstone</a></p>
+</div>
+<p class="question">Can you explain the run without trusting its final text?</p>
+<p>Messages and events serve different readers. The model receives messages, while someone inspecting a trace needs the sequence of harness activity, including attempts that produced no message. Our exercises use invented inventory data, so there's no private information to retain. Before tracing a real system, decide what to remove from the record, who may read it, and how long to keep it.</p>
+<h3>Rust concepts for this lesson</h3><p>Use an enum to define the allowed event kinds instead of spelling their names as strings. Give each event a sequence number to record its order. Store owned data so later changes to the conversation do not change earlier events. An observer receives <code>&amp;Event</code> and cannot change the stored event through that reference. You can therefore let observers read it without making a deep copy for each observer.</p>
+<p><code>RunStarted { user: String }</code> is a struct-like enum variant with a named field. Construct it as <code>EventKind::RunStarted { user: "hi".into() }</code>. Unlike <code>Reply::Final("5".into())</code>, its fields have names inside braces.</p>
+<p class="file-label">trace.rs · cumulative event vocabulary</p>
+<pre tabindex="0" aria-label="Typed Rust events"><code id="rs-events">use crate::harness::Status;
+use crate::types::*;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Event { pub seq: usize, pub kind: EventKind }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum EventKind {
+    RunStarted { user: String },
+    ModelRequested { turn: usize, messages: Vec&lt;Message&gt; },
+    ModelReplied { turn: usize, reply: Reply },
+    ToolStarted { call: Call },
+    ToolFinished { observation: Observation },
+    ToolRejected { observation: Observation },
+    ModelFailed { error: ModelError },
+    ContextSelected { kept: usize, dropped: usize },
+    RunFinished { status: Status, text: String, turns: usize },
+}
+</code></pre>
+<h4>Pass a closure as the observer</h4>
+<p>A closure is an unnamed function written inline. Its parameters go between <code>|</code> characters. <code>|event| println!("{:?}", event)</code> prints an event using Debug formatting; <code>|_| {}</code> ignores its argument and does nothing.</p>
+<p><code>FnMut(&amp;Event)</code> describes a callable that takes a borrowed event and may change captured variables. <code>&amp;mut dyn FnMut(&amp;Event)</code> borrows such a callable through a trait object. This lets <code>run</code> accept different observers without owning them.</p>
+<p class="file-label">Worked integration test · closure capture and named enum fields</p>
+<pre tabindex="0" aria-label="Counting closure observer"><code id="rs-observer">use harness_lab::trace::{Event, EventKind};
+
+fn notify(emit: &amp;mut dyn FnMut(&amp;Event), event: &amp;Event) {
+    emit(event);
+}
+#[test]
+fn counting_observer() {
+    let event = Event {
+        seq: 1,
+        kind: EventKind::RunStarted { user: "hi".into() },
+    };
+    assert!(matches!(&amp;event.kind, EventKind::RunStarted { .. }));
+    if let EventKind::RunStarted { user } = &amp;event.kind {
+        assert_eq!(user, "hi");
+    }
+    let mut count = 0;
+    let mut observer = |_event: &amp;Event| { count += 1; };
+    notify(&amp;mut observer, &amp;event);
+    notify(&amp;mut observer, &amp;event);
+    assert_eq!(count, 2);
+    notify(&amp;mut |_| {}, &amp;event);
+    assert_eq!(count, 2);
+}
+</code></pre>
+<p class="expected">The closure captures and mutably borrows <code>count</code>. After its last use you can read count, which equals 2. The no-op callback leaves it unchanged. Assertions pass with no output. <code>matches!</code> returns a boolean for a pattern; <code>if let</code> extracts fields in just the matching case. <code>{ .. }</code> ignores all named fields.</p>
+<h3>Build</h3><p>Add <code>events: Vec&lt;Event&gt;</code> and <code>tool_executions: usize</code> to <code>RunResult</code>. Add an observer argument <code>emit: &amp;mut dyn FnMut(&amp;Event)</code> to <code>run</code>. This borrowed callable can update an external counter because <code>FnMut</code> allows it to change captured variables. Callers that need no observer can pass <code>&amp;mut |_| {}</code>.</p><p>Write one recorder helper. Have it append an event with <code>seq = events.len() + 1</code>, then pass a borrow of the stored event to the observer. Clone a reply when both an event and a message need to own it. Keep wall-clock timestamps out of the core so the same inputs produce the same trace.</p>
+<pre tabindex="0" aria-label="Eight-event worked trace"><code>1 RunStarted      user="2 + 3?"
+2 ModelRequested  turn=1, messages=[User]
+3 ModelReplied    turn=1, reply=Call(c1)
+4 ToolStarted     call=c1
+5 ToolFinished    observation=Ok(5)
+6 ModelRequested  turn=2, messages=[User, Assistant(c1), Tool(c1)]
+7 ModelReplied    turn=2, reply=Final("5")
+8 RunFinished     status=Final, text="5", turns=2
+</code></pre>
+<p>Validation failures emit <code>ToolRejected</code> with the error observation, never <code>ToolStarted</code>. Later error and context cases use the additional variants. Exactly one terminal event ends each run, including zero-turn runs.</p>
+<h3>Check</h3><p>Add <code>trace_contract</code>. Assert all eight events and sequence numbers <code>1..=8</code> for the add script. Verify the first request event still has one message after the run ends. An observer records sequence numbers and receives eight callbacks. A rejection has no tool-start event. Use <code>matches!</code> to test a variant and <code>if let</code> when extracting just one known case.</p>
+<h3>Break it on purpose</h3><p>Try to assign to <code>event.seq</code> inside an observer receiving <code>&amp;Event</code>. The compiler rejects mutation through a shared reference. Restore the callback. Then skip one sequence number in the recorder; the test must catch the gap.</p>
+<p><strong>Reflect.</strong> Which event distinguishes "denied before execution" from "executed but returned an error"?</p>
+<details><summary>Hint: borrow after insertion</summary><p>The vector owns the event. Push it, then call the observer on its last element. Do not hold that element's reference while pushing another event, because reallocation could move storage.</p><details><summary>Cloning with a reason</summary><p>A request event and later mutable transcript have different lifetimes and meanings. An owned snapshot is intentional. An <code>Rc&lt;RefCell&lt;...&gt;&gt;</code> workaround would share mutation and make this evidence less trustworthy.</p></details></details>
+<p class="compare">After you finish the exercise, inspect <a href="https://github.com/badlogic/pi-mono/blob/c596d09d9cef6fdf0db2dd08f3eec8582b7fe8ba/packages/agent/src/agent-loop.ts" rel="noopener noreferrer">Pi's lifecycle events and tool-result messages</a>. Before adding a user interface, identify which part of your program needs events and which needs messages.</p>
+<fieldset><legend>Done when</legend><label class="check"><input type="checkbox" data-progress-key="ahl-v1-l05-build">My tests verify eight ordered events, unchanged snapshots, and rejection traces.</label><label class="check"><input type="checkbox" data-progress-key="ahl-v1-l05-experiment">I saw Rust reject observer mutation and a test reject a sequence gap.</label></fieldset><label class="notes-label" for="n05">Lesson 5 notes · saved locally</label><textarea id="n05" data-progress-key="ahl-v1-l05-notes" placeholder="Which clones are evidence snapshots? What must never be logged?"></textarea>
+</section>
+<section class="lesson" id="l06" aria-labelledby="t06"><p class="meta">06 / CORE / ESTIMATE 75 to 120 MINUTES</p><h2 id="t06">Limit work and handle failures</h2>
+<div class="lesson-context" aria-labelledby="context-06-title">
+<h3 id="context-06-title">Decide whether another operation can start</h3>
+<p>Suppose the model asks for add twice, but the host only permits one execution. A turn limit alone won't express that rule, because a request and an execution are different things to count. We'll give the harness separate budgets and let it check for cancellation or an expired deadline before starting more work.</p>
+<figure class="architecture" aria-labelledby="context-06-caption"><ol class="arch-path"><li><span class="arch-tag">Existing loop boundaries</span><strong>Next model request or tool execution</strong>Needs a decision to continue.</li><li class="current"><span class="arch-tag">Add now</span><strong>Stop checks</strong>Cancellation, deadline, then the relevant budget.</li><li><span class="arch-tag">Existing operation</span><strong>Model or tool</strong>Runs only after its boundary checks pass.</li></ol><p class="arch-branch">After return, check cancellation and deadline again. Discard late model replies. Preserve completed tool observations before stopping.</p><figcaption id="context-06-caption">Tool validation still precedes execution checks. Lesson 7 inserts permission there too. Synchronous checks cannot interrupt a running call.</figcaption></figure>
+<p>Add RunOptions in src/harness.rs, along with callables the tests can use to supply a clock and cancellation flag. Start with the two-add-call case. The inventory run will use the same rule: with a budget of one execution, lookup can return 12, but add must not start.</p>
+<p class="where-am-i"><a href="#architecture" target="_self">Overall architecture</a><a href="#inventory-run" target="_self">Inventory run</a><a href="#l12" target="_self">Capstone</a></p>
+</div>
+<p class="question">What stops the agent when the model does not?</p>
+<p>Asking the model to stop doesn't enforce a limit; the program needs to check it. We'll count model attempts separately from tool executions, then check cancellation and deadlines at the relevant boundaries. There's one important distinction to keep in mind as you implement those checks: stopping prevents further work, but it can't undo an action that already happened.</p>
+<h3>Rust concepts for this lesson</h3><p><code>usize</code> makes negative counts unrepresentable. <code>Option&lt;u64&gt;</code> distinguishes no deadline from tick zero. Inject <code>FnMut</code> closures for a clock and cancellation so tests need no sleeping. Use a monotonic <code>Instant</code> origin in a real synchronous demo. These artificial millisecond ticks are not Unix timestamps.</p>
+<p class="file-label">Worked deadline predicate · add to harness.rs; the stop-check order remains your assignment</p>
+<pre tabindex="0" aria-label="Short-circuit deadline let chain"><code id="rs-deadline">pub fn deadline_reached(
+    deadline_ms: Option&lt;u64&gt;,
+    now_ms: &amp;mut dyn FnMut() -&gt; u64,
+) -&gt; bool {
+    if let Some(deadline) = deadline_ms
+        &amp;&amp; now_ms() &gt;= deadline
+    {
+        return true;
+    }
+    false
+}
+</code></pre>
+<p>A <code>let</code> chain combines a successful pattern with a boolean condition, evaluated left to right. <code>None</code> skips the clock call entirely. <code>Some(10)</code> with tick 9 is false; tick 10 is true. Let chains require edition 2024 on a supporting stable compiler; this course's exact pin is tested. Keep a plain <code>match</code> when each variant needs different work. This helper checks a condition, not preemption.</p>
+<h4>Supply defaults, then override one field</h4>
+<p><code>Default</code> is a standard trait with a <code>default()</code> constructor. Here is the lesson-6 options shape and its implementation. Add the later policy and context fields only when their lessons introduce them.</p>
+<p class="file-label">harness.rs · worked options definition for this stage</p>
+<pre tabindex="0" aria-label="Run options default implementation"><code id="rs-options">pub struct RunOptions {
+    pub max_turns: usize,
+    pub max_tool_calls: usize,
+    pub deadline_ms: Option&lt;u64&gt;,
+}
+impl Default for RunOptions {
+    fn default() -&gt; Self {
+        Self { max_turns: 4, max_tool_calls: 4, deadline_ms: None }
+    }
+}
+</code></pre>
+<p class="file-label">Worked assertion · alongside the definition in an independent program</p>
+<pre tabindex="0" aria-label="Struct update example"><code id="rs-options-check">fn main() {
+    let defaults = RunOptions::default();
+    assert_eq!(defaults.max_turns, 4);
+    assert_eq!(defaults.max_tool_calls, 4);
+    assert_eq!(defaults.deadline_ms, None);
+    let short = RunOptions { max_turns: 1, ..RunOptions::default() };
+    assert_eq!(short.max_turns, 1);
+    assert_eq!(short.max_tool_calls, 4);
+    assert_eq!(short.deadline_ms, None);
+}
+</code></pre>
+<p class="expected">All assertions pass. <code>..RunOptions::default()</code> is struct update syntax. It fills unspecified fields from the default value; here only <code>max_turns</code> changes. It does not merge maps or modify a previous options value.</p>
+<h3>Build</h3><p>Replace the numeric limit parameter with <code>RunOptions</code>. Add fields <code>max_turns: usize</code>, <code>max_tool_calls: usize</code>, and <code>deadline_ms: Option&lt;u64&gt;</code>. Implement <code>Default</code> as 4, 4, and <code>None</code>. Add arguments <code>now_ms: &amp;mut dyn FnMut() -&gt; u64</code> and <code>cancelled: &amp;mut dyn FnMut() -&gt; bool</code>. Keep the observer from lesson 5.</p>
+<ol><li>Before each model request, check cancellation, then the deadline using <code>now &gt;= deadline</code>, then the turn budget. Keep this order.</li><li>After the model returns, check cancellation and the deadline again. If either requires a stop, discard the reply without recording or acting on it.</li><li>Validate each call and check permission, which you add in lesson 7. Before executing the tool, check cancellation, then the deadline, then the tool budget. A rejected call uses no execution budget.</li><li>Increment the execution count immediately before calling the tool. Record its result after it returns, even if cancellation or the deadline now requires a stop. In that case, stop without another model request. Keep the completed action in the trace.</li></ol>
+<p>This last rule intentionally distinguishes late model text from completed tool work. A tool <code>Err(ToolError::ToolFailed)</code> becomes an error observation. A model <code>Err</code> emits <code>ModelFailed</code> and ends with <code>ModelError</code>. Unexpected panics are programming defects, not retries; do not use <code>catch_unwind</code> to fabricate success. There are no automatic retries.</p>
+<p>For the two-call trace, write a separate script with two consecutive Call replies, IDs <code>c1</code> and <code>c2</code>, each requesting add with 2 and 3. The existing <code>add_script</code> has only one call and then a Final, so it cannot exercise this case.</p>
+<pre tabindex="0" aria-label="Bounds worked traces"><code>limits: turns=2, executions=1
+attempt 1 → Call(c1) → execute → Ok(5)
+attempt 2 → Call(c2) → no execution budget
+result: Budget, turns=2, executions=1, pending c2
+
+cancelled before start → Cancelled, turns=0, executions=0
+now=10, deadline=10   → Deadline, turns=0, executions=0
+model returns Err      → ModelError, turns=1, executions=0
+</code></pre>
+<h3>Check</h3><p>Add <code>bounds_contract</code> covering these traces, both zero budgets, and a tool returning <code>ToolFailed</code>. Use closures with fixed ticks and flags. A late final model reply yields no assistant message. A tool that raises the cancellation flag still contributes its observation and one execution, followed by <code>Cancelled</code>. Each run has exactly one <code>RunFinished</code>.</p>
+<h3>Break it on purpose</h3><ol><li>Change the helper's <code>&gt;=</code> to <code>&gt;</code>. Confirm that the equal-tick test fails, then restore the comparison.</li><li>Pass <code>None</code> and a clock that increments a counter. The helper must return false and leave the counter at 0 because no deadline requires a clock read.</li><li>Set a cancellation flag inside a finite test tool just before it returns. Check that the result still records the completed action and stops further work.</li></ol><p>Never test forced interruption with an infinite loop. These checks cannot interrupt synchronous Rust code while it is running. They can stop the next operation only after the current call returns.</p>
+<p><strong>Reflect.</strong> Why is retrying addition different from retrying a purchase? Which errors could ever justify a retry?</p>
+<details><summary>Hint: one stop-check helper</summary><p>Return an <code>Option&lt;Status&gt;</code> for cancellation and deadline. Budget checks differ by boundary. Record the attempted model call before invoking it even if it fails.</p><details><summary>Async belongs after the core</summary><p>Tokio can schedule cooperative tasks, not make blocking code safe or undo effects. A future network client needs its own connect/read timeouts. Untrusted processes need OS isolation and resource limits. Bounded retries require error classification and an idempotency contract. None is required for this offline core.</p></details></details>
+<fieldset><legend>Done when</legend><label class="check"><input type="checkbox" data-progress-key="ahl-v1-l06-build">My tests pass for zero limits, deadlines, cancellation, model errors, and tool errors.</label><label class="check"><input type="checkbox" data-progress-key="ahl-v1-l06-experiment">A completed tool effect stays recorded even when cancellation follows.</label></fieldset><label class="notes-label" for="n06">Lesson 6 notes · saved locally</label><textarea id="n06" data-progress-key="ahl-v1-l06-notes" placeholder="Which checks consume each budget? Which running operation must finish before a stop check can run?"></textarea>
+</section>
+<section class="lesson" id="l07" aria-labelledby="t07"><p class="meta">07 / CORE / ESTIMATE 60 to 90 MINUTES</p><h2 id="t07">Separate validity from permission</h2>
+<div class="lesson-context" aria-labelledby="context-07-title">
+<h3 id="context-07-title">Let the host choose what's allowed</h3>
+<p>A tool can be registered and receive perfectly valid arguments without being appropriate for this run. Perhaps the host wants to inspect a plan without allowing any actions. We'll add an allowed-tools set to RunOptions so that permission comes from the caller, independently of the registry and the model's reply.</p>
+<figure class="architecture" aria-labelledby="context-07-caption"><ol class="arch-path"><li><span class="arch-tag">Existing dispatch</span><strong>Registry and validation</strong>Find and validate the requested tool.</li><li class="current"><span class="arch-tag">Add now</span><strong>Host permission</strong>Allow this tool name or return Denied.</li><li><span class="arch-tag">Existing execution boundary</span><strong>Stop checks, then tool</strong>Execute only if all checks pass.</li></ol><figcaption id="context-07-caption">A denial returns an observation to the loop without a tool-start event or execution count. Permission does not register an implementation.</figcaption></figure>
+<p>Put the permission check in src/harness.rs, between argument validation and execution checks. Callers supply the policy separately from the src/tools.rs registry. The defaults name add and lookup, but lookup remains UnknownTool until lesson 12 registers it; permission alone can't supply an implementation.</p>
+<p class="where-am-i"><a href="#architecture" target="_self">Overall architecture</a><a href="#inventory-run" target="_self">Inventory run</a><a href="#l12" target="_self">Capstone</a></p>
+</div>
+<p class="question">Can a valid request still be forbidden?</p>
+<p>Validation checks whether input meets a tool's requirements. Policy specifies which tools the host allows. Model text, tool output, and saved sessions cannot grant additional permission.</p>
+<figure class="diagram"><div class="flow"><span>lookup + validate</span><b>→</b><span>host policy</span><b>→</b><span>limits</span><b>→</b><span>execute</span></div><figcaption>Stage 3. The harness checks permission before executing a tool.</figcaption></figure>
+<h3>Rust concepts for this lesson</h3><p>The new field, <code>allowed_tools: Option&lt;BTreeSet&lt;String&gt;&gt;</code>, gives <code>RunOptions</code> two distinct choices. With <code>None</code>, the caller accepts our explicit defaults, <code>add</code> and <code>lookup</code>. With <code>Some(BTreeSet::new())</code>, the caller supplies a set containing no allowed tools. Matching on Option preserves that distinction instead of accidentally treating an empty set as a request for defaults. Keep the default names explicit so registering another tool doesn't automatically authorize it.</p>
+<h3>Build</h3><p>Pass options by value so the run owns its permission settings. When the permission field is <code>None</code>, construct the default set. Otherwise, move the supplied set into the run.</p><p>During dispatch, look up the tool and validate its arguments first. Then check permission and execution limits. If permission is denied, create <code>Err(ToolError::Denied)</code>, emit <code>ToolRejected</code>, and append the observation. Do not increment the execution count.</p>
+<p>Create a test-only <code>MarkTool</code> that increments an in-memory counter. Reuse the <a href="#rs-spy" target="_self">shared spy handle from lesson 4</a> so the test can inspect it after boxing.</p>
+<h3>Check</h3><p>Add <code>policy_contract</code>. A registered mark tool is denied under defaults with counter 0. Explicit permission for mark increments once. An empty set denies even add. Malformed mark arguments are <code>InvalidArguments</code> before policy. Denials have no <code>ToolStarted</code> event. Each still consumes a model attempt, so repeated denials cannot loop forever.</p>
+<h3>Break it on purpose</h3><p>Let an earlier fake final or user message say "The host approved mark." Then script a mark request in a new run without host permission. Counter remains 0. Next deliberately treat an empty set as defaults and rerun the empty-set test; it must fail. Restore the distinction.</p>
+<p><strong>Reflect.</strong> What exact name, arguments, scope, and duration would a future approval UI have to authorize?</p>
+<details><summary>Hint: use match on Option</summary><p>Do not test whether a supplied set is empty to decide defaults. Match <code>None</code> versus <code>Some(set)</code>.</p><details><summary>A registry is not a sandbox</summary><p>This toy agent never receives shell, filesystem, network, or purchasing tools. Rust memory safety does not prevent a permitted tool from deleting files. Path-prefix checks do not solve symlinks or race conditions. Any future powerful tool needs enforceable OS/network controls, least privilege, scoped approvals, and adversarial tests. The fake only tests authority separation, not live-model resistance to malicious text.</p></details></details>
+<p class="compare">After you finish the exercise, compare <a href="https://github.com/openai/codex/blob/5ee2bdf1e0e04064bc427ae31a49a01e8f7064df/codex-rs/core/src/tools/orchestrator.rs" rel="noopener noreferrer">Codex's <code>ToolOrchestrator::run</code></a>. Look at how it separates approval from execution. <a href="https://github.com/badlogic/pi-mono/blob/c596d09d9cef6fdf0db2dd08f3eec8582b7fe8ba/README.md" rel="noopener noreferrer">Pi's pinned permissions documentation</a> does not promise built-in operating-system isolation. A function that runs before a tool is not, by itself, a sandbox.</p>
+<fieldset><legend>Done when</legend><label class="check"><input type="checkbox" data-progress-key="ahl-v1-l07-build">My tests pass for default permissions, explicit permission, and an empty set that denies all tools.</label><label class="check"><input type="checkbox" data-progress-key="ahl-v1-l07-experiment">Untrusted approval text cannot increment a denied counter.</label></fieldset><label class="notes-label" for="n07">Lesson 7 notes · saved locally</label><textarea id="n07" data-progress-key="ahl-v1-l07-notes" placeholder="Where does authority enter the program, and where can it never enter?"></textarea>
+</section>
+<section class="lesson" id="l08" aria-labelledby="t08"><p class="meta">08 / CORE / ESTIMATE 90 to 140 MINUTES</p><h2 id="t08">Serialize a session, replay without acting</h2>
+<div class="lesson-context" aria-labelledby="context-08-title">
+<h3 id="context-08-title">Inspect a run after the process exits</h3>
+<p>A completed run gives us messages, events, and a status, but so far we lose them when the process exits. We'd like to open the run tomorrow and see the same results without calling a tool again. We'll save its events in a versioned session file, validate them when loading, and use replay to reconstruct the RunResult.</p>
+<figure class="architecture" aria-labelledby="context-08-caption"><ol class="arch-path"><li><span class="arch-tag">Existing output</span><strong>RunResult events</strong>The host passes completed events to saving.</li><li class="current"><span class="arch-tag">Add now · lifecycle connection</span><strong>Session file</strong>Encode and save. On load, bound bytes, decode, and validate.</li><li class="current"><span class="arch-tag">Add now</span><strong>Replay</strong>Reconstructs RunResult from recorded outcomes.</li></ol><p class="arch-branch">No return connection to Model or Tool. Replaying twice must not repeat an action.</p><figcaption id="context-08-caption">The host chooses paths and performs save and load. A saved call is evidence, not permission to dispatch it.</figcaption></figure>
+<p>Start with the add trace and put encoding, validation, and replay in src/session.rs. The host calls the file helpers; we'll connect them to src/main.rs in lesson 12. Replaying the later inventory run will recover its recorded 12 and 17 without reading stock or adding again. These Rust session files are separate from the course checkboxes and notes saved by this page.</p>
+<p class="where-am-i"><a href="#architecture" target="_self">Overall architecture</a><a href="#inventory-run" target="_self">Inventory run</a><a href="#l12" target="_self">Capstone</a></p>
+</div>
+<p class="question">What does loading a session actually give us?</p>
+<p>First we need a way to turn Rust values into bytes, called serialization, and turn those bytes back into values, called deserialization. Loading those values gives our program a record it can inspect. It doesn't give the model memory automatically; the model still sees only the messages passed to it. Replay is our next step, rebuilding a run from the recorded outcomes rather than performing the actions again.</p>
+<h3>Rust concepts for this lesson</h3><p>Rust's standard library doesn't include a JSON parser, so this is where we add two dependencies: <code>serde</code> to derive serialization and <code>serde_json</code> to work with JSON bytes. We'll use the exact versions checked against cached crates for this guide. They're a teaching baseline, not a recommendation about the newest or most secure versions. You may need a connection for the initial fetch; subsequent locked tests can run offline.</p>
+<p class="file-label">Cargo.toml · add these entries inside the existing [dependencies] section, not a second section</p>
+<pre tabindex="0" aria-label="Pinned JSON dependencies"><code id="cargo-deps">serde = { version = "=1.0.190", features = ["derive"] }
+serde_json = "=1.0.108"
+</code></pre>
+<pre tabindex="0" aria-label="Fetch once then test offline"><code>cargo fetch
+cargo test --locked --offline
+</code></pre>
+<p>Keep <code>Cargo.lock</code>. For an extended project, review and deliberately update dependencies; do not assume these old pins stay appropriate indefinitely. The HTML itself never fetches them.</p>
+<h3>Build</h3><ol><li>Add <code>serde::Serialize, serde::Deserialize</code> to the derives on the concrete types in <code>types.rs</code>, on <code>Status</code>, and on both trace types. A type alias already has its underlying type's behavior.</li><li>Do not serialize the model, closures, trait objects, or registry.</li><li>Add <code>#[serde(deny_unknown_fields)]</code> to the serialized structs and enums. Keep the default externally tagged representation, which uses the variant name as a JSON key.</li></ol><p>For example, <code>Reply::Final("5".into())</code> encodes as <code>{"Final":"5"}</code>. This is the course's format, not a provider API.</p>
+<p class="file-label">session.rs · worked byte boundary; replay remains your assignment</p>
+<pre tabindex="0" aria-label="Session serialization helpers"><code id="rs-session">use crate::trace::Event;
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Session { pub version: u32, pub events: Vec&lt;Event&gt; }
+
+pub fn encode(session: &amp;Session) -&gt; Result&lt;String, serde_json::Error&gt; {
+    serde_json::to_string(session)
+}
+pub fn decode(text: &amp;str) -&gt; Result&lt;Session, serde_json::Error&gt; {
+    serde_json::from_str(text)
+}
+</code></pre>
+<p>We'll store each completed session as one JSON document rather than JSON Lines. Notice the ownership on either side: <code>encode</code> borrows the session so its caller keeps it, while <code>decode</code> creates strings and vectors that remain usable even after the input text is dropped. Successful deserialization tells us that the fields have the expected shape. It doesn't tell us whether a tool result came after its call or whether the run ended twice, so <code>decode</code> still needs to be followed by your <code>validate_session</code>.</p>
+<ol><li>Implement <code>validate_session(&amp;Session) -&gt; Result&lt;(), SessionError&gt;</code>. Require version 1 and consecutive sequence numbers starting at 1. Require exactly one <code>RunStarted</code> as the first event and one <code>RunFinished</code> as the last. Reject later records. Handle every event variant.</li><li>Check model attempt numbers and unique call IDs. Pair each tool start with its result, and check that observation names and IDs match the calls. <code>ToolRejected</code> must contain an error without a preceding tool start. A successful final run must have no unresolved calls.</li><li>Implement <code>replay(&amp;Session) -&gt; Result&lt;RunResult, SessionError&gt;</code> by processing recorded events in order. RunStarted creates the user message. Accepted ModelReplied events append assistant replies. ToolFinished and ToolRejected append observations. RunFinished supplies the status, text, and turn count. Count ToolStarted events to recover the execution count. Do not accept a model or registry parameter.</li><li>Implement saving and loading in the host program with <code>OpenOptions::new().write(true).create_new(true)</code>, <code>write_all</code>, and a bounded read. Reject files larger than 1 MiB before decoding. Validate the decoded session before replay.</li><li>Define an error enum with <code>Io(std::io::Error)</code>, <code>Json(serde_json::Error)</code>, and <code>Invalid</code> variants. Convert file and parser errors to those variants, then return them with <code>?</code>. Never unwrap a file or parser result.</li></ol>
+<h4>Return file errors as values</h4>
+<p>If you copy the earlier derive list onto this error enum, the compiler will reject it. Start with <code>Debug</code>: both <code>std::io::Error</code> and the pinned <code>serde_json::Error</code> lack Clone and PartialEq, so those derives aren't available here. You can still implement other suitable traits later; lesson 12 uses Display and Error for host reporting.</p>
+<p class="file-label">session.rs · error vocabulary and worked variant assertion</p>
+<pre tabindex="0" aria-label="Session error type and matches test"><code id="rs-session-error">#[derive(Debug)]
+pub enum SessionError {
+    Io(std::io::Error),
+    Json(serde_json::Error),
+    Invalid,
+}
+#[test]
+fn io_error_variant() {
+    let err = SessionError::Io(std::io::Error::from(
+        std::io::ErrorKind::NotFound,
+    ));
+    assert!(matches!(err, SessionError::Io(_)));
+}
+</code></pre>
+<p><code>matches!</code> checks the variant without comparing entire I/O errors. The underscore ignores its payload. Use <code>map_err(SessionError::Io)</code> or <code>map_err(SessionError::Json)</code> to wrap an error before <code>?</code> propagates it. The following byte helpers use <code>std::io::Result</code>, an alias for <code>Result&lt;T, std::io::Error&gt;</code>; map their errors in your session functions.</p>
+<h4>Bound bytes before decoding</h4>
+<p class="file-label">session.rs. Worked byte helpers. You still implement session saving, loading, and validation.</p>
+<pre tabindex="0" aria-label="Bounded read and exclusive write"><code id="rs-file-io">use std::fs::{File, OpenOptions};
+use std::io::{self, Read, Write};
+use std::path::Path;
+
+pub fn read_small(path: &amp;Path) -&gt; io::Result&lt;Vec&lt;u8&gt;&gt; {
+    const LIMIT: u64 = 1024 * 1024;
+    let file = File::open(path)?;
+    let mut bytes = Vec::new();
+    file.take(LIMIT + 1).read_to_end(&amp;mut bytes)?;
+    if bytes.len() as u64 &gt; LIMIT {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData, "session exceeds 1 MiB",
+        ));
+    }
+    Ok(bytes)
+}
+pub fn write_new(path: &amp;Path, bytes: &amp;[u8]) -&gt; io::Result&lt;()&gt; {
+    let mut file = OpenOptions::new()
+        .write(true).create_new(true).open(path)?;
+    file.write_all(bytes)
+}
+</code></pre>
+<p>Importing <code>Read</code> makes <code>take</code> and <code>read_to_end</code> available; <code>Write</code> does the same for <code>write_all</code>. The detail to notice is that <code>take</code> allows one byte beyond our limit. If we stopped reading at exactly 1 MiB, we couldn't distinguish a file of that size from a longer file whose tail we'd ignored. Reading the extra byte lets the helper accept exactly 1 MiB and reject anything larger with InvalidData. Decoding and history validation still come after this size check.</p>
+<p>Using <code>create_new(true)</code> protects an existing session by refusing to open a destination that already exists. A new write can still fail partway through and leave a partial file, so this isn't an atomic-write guarantee. The helper returns the error to the host, which decides how to report it.</p>
+<details><summary>Worked test fixture: a directory owned by this test only</summary>
+<p>Use <code>std::env::temp_dir()</code> for the platform's temporary parent, never a fixed shared folder that your test empties. This fixture claims a new directory using <code>create_dir</code>. A collision chooses another name without touching the existing directory. Put this test alongside the helpers in <code>session.rs</code>.</p>
+<pre tabindex="0" aria-label="Isolated file boundary test"><code id="rs-file-test">#[test]
+fn file_boundaries() -&gt; std::io::Result&lt;()&gt; {
+    use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let stamp = SystemTime::now().duration_since(UNIX_EPOCH)
+        .expect("test clock after epoch").as_nanos();
+    let parent = std::env::temp_dir();
+    let mut attempt = 0;
+    let dir = loop {
+        let candidate = parent.join(format!(
+            "harness-lab-{}-{stamp}-{attempt}", std::process::id(),
+        ));
+        match fs::create_dir(&amp;candidate) {
+            Ok(()) =&gt; break candidate,
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists =&gt; {
+                attempt += 1;
+            }
+            Err(e) =&gt; return Err(e),
+        }
+    };
+    let exact = dir.join("exact.bin");
+    let excess = dir.join("excess.bin");
+    let result = (|| -&gt; std::io::Result&lt;()&gt; {
+        write_new(&amp;exact, &amp;vec![b'x'; 1024 * 1024])?;
+        write_new(&amp;excess, &amp;vec![b'x'; 1024 * 1024 + 1])?;
+        assert_eq!(read_small(&amp;exact)?.len(), 1024 * 1024);
+        assert_eq!(read_small(&amp;excess).unwrap_err().kind(),
+            std::io::ErrorKind::InvalidData);
+        assert_eq!(write_new(&amp;exact, b"replacement").unwrap_err().kind(),
+            std::io::ErrorKind::AlreadyExists);
+        assert_eq!(read_small(&amp;exact)?, vec![b'x'; 1024 * 1024]);
+        Ok(())
+    })();
+    for file in [&amp;exact, &amp;excess] {
+        match fs::remove_file(file) {
+            Ok(()) =&gt; {}
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound =&gt; {}
+            Err(e) =&gt; return Err(e),
+        }
+    }
+    fs::remove_dir(&amp;dir)?;
+    result
+}
+</code></pre>
+<p class="expected">Expect one passing test. <code>b'x'</code> is one byte and <code>b"replacement"</code> is a byte string. <code>vec![value; count]</code> repeats that value. The immediate closure captures the paths so returned I/O errors reach cleanup. Assertions may panic on a defect and leave this uniquely named fixture for inspection. Remove only those two files and the directory you created, never other temporary content. Test assertions such as <code>unwrap_err</code> deliberately fail if an expected error is absent; do not use them in host I/O code.</p>
+</details>
+<pre tabindex="0" aria-label="Replay reducer worked trace"><code>RunStarted("2 + 3?")       → [User]
+ModelReplied(Call(c1))       → [User, Assistant(call)]
+ToolFinished(c1, Ok(5))      → [User, Assistant(call), Tool]
+ModelReplied(Final("5"))     → [User, Assistant(call), Tool, Assistant(final)]
+RunFinished(Final, "5", 2)   → same messages, turns=2, executions=1
+</code></pre>
+<p>What should validation do with a call that has no result? If a budget, deadline, or cancellation stopped the run before the tool started, one pending call can be legitimate. Accept it only when the recorded status matches that stopping reason. A tool that did start is different: its completed session must include the result, even when the harness stops immediately afterward. Reject a log that omits it.</p><p>We're saving completed runs, not building crash recovery. The file can preserve what happened in a finished run, but it doesn't guarantee durability or recover an interrupted action. As with the byte helper above, exclusive creation protects earlier files while a failed write can still leave a partial new one.</p>
+<h3>Check</h3><p>Add <code>session_contract</code> with the following checks.</p><ol><li>Encode the add run, decode it, and replay it twice. Compare each replay with the original messages, status, text, turns, tool_executions, and events. Include the recorded events in the replay result.</li><li>Drop the input JSON string after decoding. Confirm that you can still inspect the session's owned values.</li><li>Reject an unknown field, version 2, a sequence gap, a duplicate call ID, an observation with the wrong ID or name, a repeated terminal event, truncated JSON, and an oversized file.</li><li>Try saving to an existing path. The save must fail without replacing its bytes. Use a directory created by this test, then remove only that directory and its test files.</li></ol>
+<h3>Break it on purpose</h3><p>In a separate spy experiment, execute a recorded mark request again. Its counter becomes 2. Then call your actual replay twice; the counter must not move. A log of intent cannot prove an interrupted external effect did not happen.</p>
+<p><strong>Reflect.</strong> Why does <code>Deserialize</code> leave event order and completed actions unchecked? Why must validation run before replay?</p>
+<details><summary>Hint: replay recorded results</summary><p>Replay appends each recorded observation without dispatching a tool. While validating event order, keep a record of the pending call.</p><details><summary>Crash recovery needs a separate design</summary><p>A future append-only log might record a call before executing it. If the process crashes before recording the result, the log cannot tell you whether the action happened. Before resuming, check the external result or use an operation that can repeat without changing the outcome. Never repair a malformed file silently or execute its requests automatically.</p></details></details>
+<p class="compare">After you finish the exercise, inspect <a href="https://github.com/badlogic/pi-mono/blob/c596d09d9cef6fdf0db2dd08f3eec8582b7fe8ba/packages/coding-agent/src/core/session-manager.ts" rel="noopener noreferrer">Pi's <code>SessionEntryBase</code> and <code>buildSessionContext</code></a>. Its IDs and parent IDs support a session tree. Your version-1 linear JSON document deliberately omits branching; it is not Pi's format.</p>
+<fieldset><legend>Done when</legend><label class="check"><input type="checkbox" data-progress-key="ahl-v1-l08-build">My tests pass for serialization, replay, invalid histories, and refusal to overwrite existing files.</label><label class="check"><input type="checkbox" data-progress-key="ahl-v1-l08-experiment">Replay performs no actions, and decoded values outlive the JSON input.</label></fieldset><label class="notes-label" for="n08">Lesson 8 notes · saved locally</label><textarea id="n08" data-progress-key="ahl-v1-l08-notes" placeholder="What does your log prove? What would you not know after a crash?"></textarea>
+</section>
+<section class="lesson" id="l09" aria-labelledby="t09"><p class="meta">09 / CORE / ESTIMATE 75 to 120 MINUTES</p><h2 id="t09">Borrow a context window</h2>
+<div class="lesson-context" aria-labelledby="context-09-title">
+<h3 id="context-09-title">Keep the record while choosing what the model sees</h3>
+<p>We can now save a full record, but a model may not have room for every message in its next request. Rather than deleting history, we'll choose a view of it for each attempt. That selected input is the request's context. The full transcript stays with the harness for inspection and replay.</p>
+<figure class="architecture" aria-labelledby="context-09-caption"><ol class="arch-path"><li><span class="arch-tag">Existing state</span><strong>Full transcript</strong>Remains owned by the harness.</li><li class="current"><span class="arch-tag">Add now · per request</span><strong>Context selection</strong>Keep required messages and whole older groups that fit.</li><li><span class="arch-tag">Existing boundary</span><strong>Model request</strong>Borrows a copy of the selected messages.</li></ol><p class="arch-branch">Replies and observations still append to the full transcript. Selection failure stops before a model attempt.</p><figcaption id="context-09-caption">The optional context limit changes the request connection. It does not trim the saved record or change tool policy.</figcaption></figure>
+<p>Put selection in src/context.rs and call it from src/harness.rs when enabled, recording ContextSelected before ModelRequested. The current inventory question and its call-result pairs must stay together; if they don't fit, stop rather than dropping the lookup evidence. To test removing older groups, we'll construct a separate history fixture, since run starts with just one user message.</p>
+<p class="where-am-i"><a href="#architecture" target="_self">Overall architecture</a><a href="#inventory-run" target="_self">Inventory run</a><a href="#l12" target="_self">Capstone</a></p>
+</div>
+<p class="question">What can the next model call see when history is too large?</p>
+<p>How much of an old conversation can we leave out without making the remaining messages confusing? We'll keep the latest user message and everything after it as one group, and retain each tool call with its result. That gives us a selection rule we can test without changing the transcript. Selection also leaves permission alone; even a summary added later can't grant authority to use a tool.</p>
+<h3>Rust concepts for this lesson</h3><p>A single lifetime annotation is useful now. <code>fn select&lt;'a&gt;(messages: &amp;'a [Message]) -&gt; Vec&lt;&amp;'a Message&gt;</code> says the references in the result cannot outlive the borrowed input. It does not extend the input's life or allocate copies. <code>.iter()</code> borrows elements; <code>.into_iter()</code> on an owned vector moves them. Use iterators when they make selection clear, not to compress every loop into one expression.</p>
+<p class="file-label">Worked borrowed view · standalone program</p>
+<pre tabindex="0" aria-label="Borrowed context example"><code id="rs-context">fn last_group&lt;'a&gt;(items: &amp;'a [String], start: usize) -&gt; Vec&lt;&amp;'a String&gt; {
+    items.iter().skip(start).collect()
+}
+fn main() {
+    let history = vec!["old".to_owned(), "current".to_owned()];
+    let selected = last_group(&amp;history, 1);
+    assert_eq!(selected.len(), 1);
+    assert_eq!(selected[0], "current");
+    assert_eq!(history.len(), 2);
+}
+</code></pre>
+<h3>Build</h3><p>Write <code>select_context&lt;'a&gt;(messages: &amp;'a [Message], limit: usize, reserve: usize) -&gt; Result&lt;Vec&lt;&amp;'a Message&gt;, ContextError&gt;</code>. Count each message as one artificial unit for this exercise. The selected message count plus the reserve must not exceed the limit. Use <code>checked_sub</code> to calculate available space and detect when the reserve exceeds the limit instead of subtracting below zero.</p>
+<p>Preserve all System messages, the latest User message, and everything after it. Earlier user-turn groups may be removed only whole, oldest first. With no User, return a context error. Do not duplicate a System message when forming groups. If required messages alone exceed available space, return <code>ContextError::TooLarge</code>.</p>
+<p>Add <code>context_limit: Option&lt;usize&gt;</code> and <code>reserve: usize</code> to options, with defaults None and 0. When the limit is enabled, select context before the model attempt. If selection fails, return <code>ContextLimit</code> without making an attempt.</p><p>The Model trait accepts <code>&amp;[Message]</code>, not a collection of references. Copy the selected messages into one owned vector with <code>selected.into_iter().cloned().collect::&lt;Vec&lt;Message&gt;&gt;()</code>. This snapshot lets you keep the existing model interface. End the borrow before changing history. Emit <code>ContextSelected { kept, dropped }</code> only when context selection is enabled.</p>
+<pre tabindex="0" aria-label="Whole-group context trace"><code>old group:     User, Assistant(call), Tool, Assistant(final)  # 4 units
+current group: User                                          # 1 unit
+limit=4, reserve=1 → select current User only
+original history stays length 5
+
+required group=4, limit=4, reserve=1 → TooLarge
+reserve=5, limit=4                  → TooLarge, never subtraction panic
+</code></pre>
+<h3>Check</h3><p>Add <code>context_contract</code> for both traces, a System message, reserve &gt; limit, no User, and several old groups. Assert that every retained call keeps exactly one later result with the same call ID and tool name, and every retained result has exactly one earlier matching call in the selection. Check both directions so a result without its call fails too. Also assert that each old user-turn group is retained whole or omitted whole and that the original history stays unchanged.</p><p>Test the messages the model receives in <code>tests/acceptance.rs</code> as follows.</p><ol><li>Create a <code>Vec&lt;Message&gt;</code> fixture by hand. Call your public <code>harness_lab::context::select_context</code> with it.</li><li>Copy the selected messages into an owned vector. Pass a reference to that vector to <code>FakeModel::complete</code>.</li><li>Compare <code>fake.requests[0]</code> with the expected current User. Import <code>Model</code> as in lesson 2.</li></ol><p>This test supplies its own history. You do not need another public helper or a history parameter on <code>run</code>.</p>
+<h3>Break it on purpose</h3><p>Keep a borrowed view of a vector, append to the vector, then use the view. Expect <code>E0502</code>. The append could move the vector's storage while the view still refers to it. End the borrow before the append to fix the error.</p><p>Next, select only the last two messages of the four-message old group shown above. This retains Tool and Assistant(final), but drops Assistant(call). The result-to-call assertion must fail because the retained Tool result has no matching earlier call in the selection. Keeping the last three messages would retain both the call and its result, so it would not expose an orphan result, even though it still breaks the whole-group rule.</p>
+<p><strong>Reflect.</strong> Why can Rust accept a borrowed selection even when it omits a call or its result?</p>
+<details><summary>Hint: count whole groups</summary><p>Find the latest user message first. Record which message indices you must keep, then remove older groups until the selected count fits. Prefer a readable loop to a dense iterator chain.</p><details><summary>Token limits need more than message counts</summary><p>Message count is not token count. A live adapter must count or estimate the provider's input format, tool schemas, and reserved output space. Dividing the character count by four does not guarantee a token limit. If you later add summaries that omit detail, preserve the original transcript too.</p></details></details>
+<p class="compare">After you finish the exercise, compare <a href="https://github.com/openai/codex/blob/5ee2bdf1e0e04064bc427ae31a49a01e8f7064df/codex-rs/core/src/context_manager/history.rs" rel="noopener noreferrer">Codex's <code>ContextManager</code> and <code>conversation_history_snapshot</code></a>. Look at how it separates stored history from the messages sent to the model. You do not need to copy its production implementation.</p>
+<fieldset><legend>Done when</legend><label class="check"><input type="checkbox" data-progress-key="ahl-v1-l09-build">My tests pass for whole groups, required messages that exceed the limit, an excessive reserve, and the model's selected input.</label><label class="check"><input type="checkbox" data-progress-key="ahl-v1-l09-experiment">I repaired an overlapping borrow and caught a selection that separated a call from its result.</label></fieldset><label class="notes-label" for="n09">Lesson 9 notes · saved locally</label><textarea id="n09" data-progress-key="ahl-v1-l09-notes" placeholder="Where does the borrow end? Why copy selected messages before passing them to Model?"></textarea>
+</section>
+<section class="lesson" id="l10" aria-labelledby="t10"><p class="meta">10 / CORE / ESTIMATE 75 to 120 MINUTES</p><h2 id="t10">Assemble a stream without guessing</h2>
+<div class="lesson-context" aria-labelledby="context-10-title">
+<h3 id="context-10-title">Assemble model output before returning a reply</h3>
+<p>So far, the fake hands us a complete Reply in one call. What changes if the response arrives in chunks? We'll collect those chunks inside StreamingFake and check that the stream finished before returning a reply. The harness can keep using the same Model interface, because assembly belongs on the model side of that boundary.</p>
+<figure class="architecture" aria-labelledby="context-10-caption"><ol class="arch-path"><li><span class="arch-tag">New input form inside Model</span><strong>Scripted byte chunks</strong>Include an explicit completion event.</li><li class="current"><span class="arch-tag">Add now</span><strong>Stream assembler</strong>Checks all framing, then decodes and validates Reply.</li><li><span class="arch-tag">Existing loop</span><strong>Harness</strong>Receives a Reply or model error through Model.</li></ol><p class="arch-branch">A valid Call still goes through ordinary dispatch checks. Partial bytes have no connection to tools.</p><figcaption id="context-10-caption">StreamingFake calls the assembler during complete. The ordinary FakeModel can continue returning replies directly.</figcaption></figure>
+<p>Write the assembler in src/stream.rs and call it from StreamingFake's Model implementation. We'll test streams for add and final text first. Even if a chunk already contains parseable arguments, dispatch must wait for valid completion. This changes how the model produces a Reply, not how run is called, so the ordinary fake and inventory demo can keep returning complete replies directly.</p>
+<p class="where-am-i"><a href="#architecture" target="_self">Overall architecture</a><a href="#inventory-run" target="_self">Inventory run</a><a href="#l12" target="_self">Capstone</a></p>
+</div>
+<p class="question">When does partial text become an executable request?</p>
+<p>Imagine receiving valid JSON followed by a message saying the response was truncated. Parsing the JSON alone would miss that failure. We'll check completion and event order before decoding and validating Reply, then leave argument and permission checks to the normal dispatch path. A display might show partial text as it arrives, but that text can't authorize an action.</p>
+<h3>Rust concepts for this lesson</h3><p>Use an enum for stream events. Track whether you are still collecting bytes or have received completion. Keep data as bytes until the whole message arrives. A UTF-8 character can span chunks, and slicing a <code>String</code> at an arbitrary byte position can panic.</p><p><code>Vec&lt;u8&gt;</code> stores bytes. <code>serde_json::from_slice</code> decodes a borrowed byte slice into the requested type, here Reply. Individual chunks do not need to be valid strings. The syntax <code>br#"..."#</code> creates a raw byte-string literal with no need to escape its inner quotes. Use <code>.to_vec()</code> to copy those bytes into an owned vector.</p>
+<p class="file-label">stream.rs · protocol vocabulary and fixture, not the assembler</p>
+<pre tabindex="0" aria-label="Rust stream fixture"><code id="rs-stream">#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Finish { Complete, Truncated }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StreamEvent { Delta(Vec&lt;u8&gt;), Done(Finish) }
+
+pub fn final_stream() -&gt; Vec&lt;StreamEvent&gt; {
+    vec![
+        StreamEvent::Delta(br#"{"Final":"#.to_vec()),
+        StreamEvent::Delta(br#""5"}"#.to_vec()),
+        StreamEvent::Done(Finish::Complete),
+    ]
+}
+</code></pre>
+<p><code>impl IntoIterator&lt;Item = StreamEvent&gt;</code> accepts a value Rust can turn into an iterator, such as a vector of stream events. <code>Item</code> is the trait's associated type for each yielded element, fixed here to StreamEvent. The assembler consumes those elements.</p>
+<h3>Build</h3><p>Implement <code>assemble(events: impl IntoIterator&lt;Item = StreamEvent&gt;) -&gt; Result&lt;Reply, ModelError&gt;</code> with a buffer of at most 16,384 bytes. Check the whole stream before returning a reply.</p><ul><li>Require exactly one Complete done event.</li><li>Reject Truncated, missing done, repeated done, and any event after done.</li><li>Decode the collected bytes into Reply, reject invalid JSON, and run <code>validate_reply</code>.</li><li>Return <code>ModelError::Protocol</code> for invalid framing.</li></ul>
+<p>Add a <code>StreamingFake</code> implementing Model. Its <code>complete</code> assembles one scripted stream; the run loop stays unchanged. A stream error is a model-boundary <code>Err</code>, so the run ends with <code>Status::ModelError</code> and no tool execution. A valid typed Reply that fails the harness's own semantic validation instead gives <code>ProtocolError</code>. Keep that distinction in tests.</p>
+<pre tabindex="0" aria-label="Stream worked trace"><code>Delta bytes: {"Call":{"id":"c1","name":"add","args":
+Delta bytes: {"a":{"Int":2},"b":{"Int":3}}}}
+Done(Complete) → parse + validate → Call(c1), still not execution
+same bytes + Done(Truncated) → Err(Protocol), zero tools
+same bytes + end of iterator → Err(Protocol), zero tools
+</code></pre>
+<h3>Check</h3><p>Add <code>stream_contract</code> and check that the supplied fixture returns <code>Reply::Final("5".into())</code>.</p><ol><li>Serialize the first reply in the add script. Split its bytes at every possible boundary, including empty first and last chunks. Every complete stream must reconstruct the same reply.</li><li>Repeat with final text containing "café 🧪" so some splits fall inside UTF-8 characters.</li><li>Reject malformed UTF-8, 16,385 bytes, missing or repeated done events, a truncated completion, and a delta after completion.</li><li>Pass each rejected stream through the model interface in a run with an execution spy. Assert that no tool executes.</li></ol>
+<h3>Break it on purpose</h3><p>Give the assembler a fully parseable tool call followed by Truncated. An eager parser would execute prematurely. Your test must reject it even though the JSON itself is valid. Separately attempt to slice "é" at byte 1; observe the panic in an isolated test, then restore byte buffering.</p>
+<p><strong>Reflect.</strong> Which stream events can update a display but cannot authorize a tool?</p>
+<details><summary>Hint: completion is not end of inspection</summary><p>Mark done, then keep checking the iterator for forbidden trailing events. Parse only once, after framing is known valid.</p><details><summary>No async required</summary><p>An iterator models incremental delivery for deterministic tests. A future provider transport can feed the same assembly logic. Interleaved multi-call deltas require per-call state keyed by ID; defer that until you have a concrete provider contract.</p></details></details>
+<p class="compare">After you finish the exercise, read <a href="https://github.com/badlogic/pi-mono/blob/c596d09d9cef6fdf0db2dd08f3eec8582b7fe8ba/packages/agent/src/agent-loop.ts" rel="noopener noreferrer">Pi's <code>failToolCallsFromTruncatedMessage</code></a>. At the pinned revision, a length stop prevents execution even when salvaged arguments could parse. Your experiment isolates that failure mode.</p>
+<fieldset><legend>Done when</legend><label class="check"><input type="checkbox" data-progress-key="ahl-v1-l10-build">Every complete byte split works. Malformed, oversized, and incomplete streams execute no tools.</label><label class="check"><input type="checkbox" data-progress-key="ahl-v1-l10-experiment">Parseable truncated data is rejected, including through the model boundary.</label></fieldset><label class="notes-label" for="n10">Lesson 10 notes · saved locally</label><textarea id="n10" data-progress-key="ahl-v1-l10-notes" placeholder="What proves completion? Why buffer bytes rather than String fragments?"></textarea>
+</section>
+<section class="lesson" id="l11" aria-labelledby="t11"><p class="meta">11 / OPTIONAL EXTENSION / ESTIMATE 60 to 120 MINUTES, LIVE SETUP EXTRA</p><h2 id="t11">Keep a provider replaceable</h2>
+<div class="lesson-context" aria-labelledby="context-11-title">
+<h3 id="context-11-title">Replace the model implementation, not the harness</h3>
+<p>The Model interface has already let us exchange a direct reply for an assembled stream without changing the harness. We can use the same idea when a provider returns a different format. This optional lesson translates an invented response behind Model; if you'd rather finish the core first, continue to <a href="#l12" target="_self">lesson 12</a>.</p>
+<figure class="architecture" aria-labelledby="context-11-caption"><ol class="arch-path"><li><span class="arch-tag">Existing caller</span><strong>Harness</strong>Passes messages to Model.</li><li class="current"><span class="arch-tag">Add now · optional replacement</span><strong>WireAdapter</strong>Calls transport and translates its response.</li><li class="future"><span class="arch-tag">Optional offline fixture</span><strong>Toy transport</strong>Returns provider-shaped text to the adapter.</li></ol><p class="arch-branch">Return connection. The adapter returns Reply or ModelError to the harness. It never calls the tool registry.</p><figcaption id="context-11-caption">This toy format is not a real provider API. Streaming assembly is a separate model implementation, not a required stage of this adapter.</figcaption></figure>
+<p>Keep WireAdapter and its Model implementation in src/adapter.rs, with tests supplying the transport. We'll translate "hello" into "hello back" and execute no tools. Supporting inventory through a real provider would also require role translation, tool descriptions, and call-ID mapping; this smaller exercise lets us test the translation boundary first. The host still chooses which Model to pass to run.</p>
+<p class="where-am-i"><a href="#architecture" target="_self">Overall architecture</a><a href="#inventory-run" target="_self">Inventory run</a><a href="#l12" target="_self">Capstone</a></p>
+</div>
+<p class="question">Can a different wire format leave your harness unchanged?</p>
+<p>An adapter normally translates requests into a provider's format and responses back into Reply, reporting transport errors when a connection fails. Our offline exercise concentrates on response translation using an invented provider, not an OpenAI endpoint or Codex API. Tool management, permissions, and conversation history remain in the harness, which is why changing formats needn't change the loop.</p>
+<h3>Rust concepts for this lesson</h3><p>Use <code>WireAdapter&lt;F&gt;</code> with <code>F: FnMut(&amp;[Message]) -&gt; Result&lt;String, ModelError&gt;</code>. The generic closure makes the transport replaceable without global network state. Deserialize into a small owned struct with <code>deny_unknown_fields</code>, not a loosely indexed JSON tree.</p>
+<p class="file-label">adapter.rs. Store the transport callable here. You still implement Model.</p>
+<pre tabindex="0" aria-label="Generic wire adapter skeleton"><code id="rs-wire-skeleton">pub struct WireAdapter&lt;F&gt; {
+    pub transport: F,
+}
+impl&lt;F&gt; WireAdapter&lt;F&gt;
+where
+    F: FnMut(&amp;[Message]) -&gt; Result&lt;String, ModelError&gt;,
+{
+    pub fn new(transport: F) -&gt; Self {
+        Self { transport }
+    }
+}
+</code></pre>
+<p><code>F</code> names the concrete callable type stored in the struct. <code>impl&lt;F&gt;</code> defines methods for that family of structs. The <code>where</code> clause restricts F to a callable with the shown input and output. <code>Self { transport }</code> is shorthand for <code>Self { transport: transport }</code>. Construct it with <code>WireAdapter::new(toy_transport)</code>. Calling its transport with <code>[Message::User("hello".into())]</code> returns the fixture JSON below. You still implement <code>Model</code> and response validation.</p>
+<p class="file-label">adapter.rs · worked transport fixture; implement the adapter yourself</p>
+<pre tabindex="0" aria-label="Offline Rust provider fixture"><code id="rs-adapter">use crate::types::*;
+
+pub fn toy_transport(messages: &amp;[Message]) -&gt; Result&lt;String, ModelError&gt; {
+    if messages != [Message::User("hello".into())] {
+        return Err(ModelError::Protocol);
+    }
+    Ok(r#"{"response_type":"text","body":"hello back"}"#.into())
+}
+</code></pre>
+<h3>Build</h3><p>Define a struct for the provider response with <code>response_type: String</code> and <code>body: String</code>. Implement Model for the adapter.</p><ol><li>Pass the borrowed messages to the transport.</li><li>Parse the response and require response_type to equal "text". Return <code>Reply::Final(body)</code> on success.</li><li>Return Protocol for unknown fields, a null body, other response kinds, or malformed JSON. Pass Transport errors back to the caller.</li></ol><p>Do not send a completed provider response directly to a tool. The harness must still check it.</p>
+<h3>Check</h3><p>Add <code>adapter_contract</code>. Run the adapter with "hello". Expect one model attempt, Final status, and the exact text "hello back". A closure that returns <code>Err(ModelError::Transport)</code> must end the run with Status::ModelError. Test a null body, a numeric body, an extra field, and an unknown response type. None may produce a successful reply. All cases must execute zero tools. Keep the tests offline.</p>
+<h3>Break it on purpose</h3><p>Return <code>{"response_type":"text","body":null}</code>. Predict why a String field rejects it. Temporarily use generic JSON <code>to_string()</code> instead and observe how the word "null" can masquerade as an answer. Restore typed deserialization.</p>
+<p><strong>Reflect.</strong> Which tests remain unchanged when the provider changes? Where does a provider call ID become your internal call ID?</p>
+<details><summary>Hint: move owned body text into the reply</summary><p>Once the wire struct validates, move its body. There is no reason to clone that string.</p><details><summary>Optional live and async work, only after the core</summary><ol><li>Read the chosen provider's current API, finish reasons, authentication, and tool schema. Pin and review an SDK/HTTP client before adding it. No SDK version is asserted by this course.</li><li>Keep credentials in the local Rust process environment or an appropriate secret store, never this HTML, browser code, traces, or fixtures. Send only invented non-sensitive data in smoke tests.</li><li>Translate all internal roles and preserve call IDs. Reject multi-call responses until your contract supports them. Apply connection/read timeouts, bounded attempts, and an explicit cost warning.</li><li>Only add Tokio if concurrent I/O is a measured need. Understand task cancellation and blocking work before using spawn. Async does not replace authority checks or OS isolation.</li><li>Keep the offline suite. A live response is integration evidence, not deterministic proof of planning quality or safety.</li></ol></details></details>
+<p class="compare">After you finish the exercise, revisit <a href="https://github.com/badlogic/pi-mono/blob/c596d09d9cef6fdf0db2dd08f3eec8582b7fe8ba/packages/agent/src/agent-loop.ts" rel="noopener noreferrer">Pi's provider conversion boundary</a>. Compare which functions translate requests and responses. You do not need to adopt its provider format.</p>
+<fieldset><legend>Done when</legend><label class="check"><input type="checkbox" data-progress-key="ahl-v1-l11-build">My optional adapter passes translation, malformed-data, and transport-error tests.</label><label class="check"><input type="checkbox" data-progress-key="ahl-v1-l11-experiment">I reject a null body instead of converting it to an answer.</label></fieldset><label class="notes-label" for="n11">Lesson 11 notes · saved locally</label><textarea id="n11" data-progress-key="ahl-v1-l11-notes" placeholder="If skipped, note what evidence you would require before a live call."></textarea>
+</section>
+<section class="lesson" id="l12" aria-labelledby="t12"><p class="meta">12 / CORE CAPSTONE / ESTIMATE 90 to 150 MINUTES</p><h2 id="t12">Prove a bounded inventory agent</h2>
+<div class="lesson-context" aria-labelledby="context-12-title">
+<h3 id="context-12-title">Connect the tested parts to the inventory task</h3>
+<p>We've used 2 + 3 to build and test the core. Now we can return to the washer question that started the guide. We'll register a stock lookup and write the command-line host that runs the inventory script through your existing loop. The optional adapter from lesson 11 isn't needed here; the fake gives us repeatable results for these final integration checks.</p>
+<figure class="architecture" aria-labelledby="context-12-caption"><ol class="arch-path"><li class="current"><span class="arch-tag">Add now</span><strong>Inventory host</strong>Supplies the script, registry, and options to run.</li><li><span class="arch-tag">Existing core</span><strong>Harness and Model</strong>Exchange messages, dispatch checked calls, and record events.</li><li class="current"><span class="arch-tag">Add now to tools</span><strong>Lookup beside add</strong>Reads washers = 12 and returns an observation to run.</li></ol><p class="arch-branch">Existing lifecycle connection. RunResult returns to the host for display and session saving. Load and replay reconstruct it without another model or tool call.</p><figcaption id="context-12-caption">The same loop handles lookup and add. Registration supplies the lookup implementation. Existing host policy decides whether it may run.</figcaption></figure>
+<p>Add LookupTool and inventory_registry to src/tools.rs, and inventory_script to src/model.rs. Then replace the practice src/main.rs with a host that displays the result and chooses session paths. The run will look up 12 and calculate 17 without buying anything or changing stock. We'll check those observations and their return path to the model, not only the printed answer.</p>
+<p class="where-am-i"><a href="#architecture" target="_self">Overall architecture</a><a href="#inventory-run" target="_self">Inventory run</a><a href="#l12" target="_self">Capstone</a></p>
+</div>
+<p class="question">Does the answer agree with what the tools actually returned?</p>
+<p>The fake still follows a script, so it can print 17 even when its calculation doesn't use the observed stock. We'll make that mismatch visible in the break-it experiment by changing stock to 99. Alongside the answer check, the capstone tests exercise permission, limits, and replay. Together they check how your program handles the run; evaluating a real model's understanding would be a separate task.</p>
+<h3>Rust concepts for this lesson</h3><p>Use modules and integration tests to keep the public contract small. A binary in <code>src/main.rs</code> calls your library through <code>harness_lab</code>. It can return <code>Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt;</code> to propagate host I/O errors with <code>?</code>; implement Display and Error for your session error enum. This outer application convenience need not erase typed errors inside the harness.</p>
+<h4>Give a host error a printable message</h4>
+<p><code>Display</code> defines human-readable formatting with <code>{}</code>. <code>Error</code> is the standard error trait and requires Debug and Display. <code>Box&lt;dyn Error&gt;</code> owns one error behind that shared interface, so <code>main</code> can propagate different host error types. Keep specific enums inside the harness.</p>
+<p class="file-label">Worked standalone program · a distinct error, not the session implementation</p>
+<pre tabindex="0" aria-label="Display Error and boxed error example"><code id="rs-host-error">use std::{error::Error, fmt};
+#[derive(Debug)]
+struct EmptyName;
+impl fmt::Display for EmptyName {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        write!(f, "name is empty")
+    }
+}
+impl Error for EmptyName {}
+fn require_name(name: &amp;str) -&gt; Result&lt;(), EmptyName&gt; {
+    if name.is_empty() { Err(EmptyName) } else { Ok(()) }
+}
+fn host(name: &amp;str) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    require_name(name)?;
+    Ok(())
+}
+fn main() {
+    assert_eq!(EmptyName.to_string(), "name is empty");
+    assert!(host("washers").is_ok());
+    assert_eq!(host("").unwrap_err().to_string(), "name is empty");
+}
+</code></pre>
+<p class="expected">Assertions pass with no output. The formatter borrows an output destination; <code>write!</code> writes into it instead of printing to the terminal. <code>'_</code> asks Rust to infer the borrow lifetime. The empty Error implementation uses the trait's defaults. Here <code>?</code> converts EmptyName into the boxed host error. For SessionError, write a Display match over its three variants and implement Error; do not discard the underlying typed error inside your core.</p>
+<h3>Build</h3><p>Implement <code>LookupTool</code> with one in-memory record that maps washers to 12. Require exactly one <code>item</code> field of type Scalar::Text. Its value must be nonempty and at most 40 UTF-8 bytes. Return NotFound for an unknown item. Create <code>inventory_registry() -&gt; Registry</code> with add and lookup entries. Put the following fixture in <code>model.rs</code>. It does not update stock or place a purchase.</p>
+<pre tabindex="0" aria-label="Rust inventory script"><code id="rs-inventory">pub fn inventory_script() -&gt; Vec&lt;Reply&gt; {
+    vec![
+        Reply::Call(Call {
+            id: "c1".into(), name: "lookup".into(),
+            args: [("item".into(), Scalar::Text("washers".into()))].into(),
+        }),
+        Reply::Call(Call {
+            id: "c2".into(), name: "add".into(),
+            args: [("a".into(), Scalar::Int(12)),
+                   ("b".into(), Scalar::Int(5))].into(),
+        }),
+        Reply::Final("12 washers + 5 = 17 washers.".into()),
+    ]
+}
+</code></pre>
+<p class="file-label">tests/acceptance.rs · executable cumulative target, after implementing the earlier assignments</p>
+<pre tabindex="0" aria-label="Capstone Rust integration target"><code id="rs-capstone-test">use harness_lab::harness::{run, RunOptions, Status};
+use harness_lab::model::{FakeModel, inventory_script};
+use harness_lab::tools::inventory_registry;
+use harness_lab::types::{Message, Observation};
+
+#[test]
+fn capstone_inventory() {
+    let mut model = FakeModel::new(inventory_script());
+    let options = RunOptions {
+        max_turns: 3, max_tool_calls: 2, ..RunOptions::default()
+    };
+    let result = run(
+        &amp;mut model, "If I buy 5 washers, how many?",
+        &amp;mut inventory_registry(), options,
+        &amp;mut |_| {}, &amp;mut || 0, &amp;mut || false,
+    );
+    assert_eq!(result.status, Status::Final);
+    assert_eq!(result.text, "12 washers + 5 = 17 washers.");
+    assert_eq!(result.turns, 3);
+    assert_eq!(result.tool_executions, 2);
+    assert_eq!(result.messages.len(), 6);
+    let observations: Vec&lt;_&gt; = result.messages.iter().filter_map(|m| {
+        if let Message::Tool(o) = m { Some(o) } else { None }
+    }).collect();
+    let lookup = Observation {
+        call_id: "c1".into(), name: "lookup".into(), outcome: Ok(12),
+    };
+    let sum = Observation {
+        call_id: "c2".into(), name: "add".into(), outcome: Ok(17),
+    };
+    assert_eq!(observations, vec![&amp;lookup, &amp;sum]);
+    assert_eq!(model.requests.len(), 3);
+    assert_eq!(model.requests[1].last(), Some(&amp;Message::Tool(lookup)));
+    assert_eq!(model.requests[2].last(), Some(&amp;Message::Tool(sum)));
+}
+</code></pre>
+<p>This test uses the final signature in the <a href="#contracts" target="_self">contract reference</a>, so bring earlier test calls up to date before running it. Each assertion checks a connection through your <code>run</code> implementation: the message count includes both call-and-result pairs, the later requests carry the tool results back to the model, and the observations preserve IDs and names through dispatch. If an assertion fails, follow that connection to find the missing step.</p>
+<h3>Check the capstone, not just the answer</h3>
+<ol class="test-matrix"><li><strong>Check the answer against the tool results.</strong> Run capstone_inventory and inspect both later requests. Add <code>capstone_grounding</code> to compare the final calculation with the value returned by lookup, rather than only checking a fixed string.</li><li><strong>Check the limits.</strong> Add <code>capstone_budget</code>. With max turns 1, expect Budget, one request, and one execution. With tool budget 1, expect Budget on the second requested call and one execution. Add <code>capstone_cancelled</code>. Cancellation at the start must produce zero requests and executions. Test an already expired deadline with the same expectations.</li><li><strong>Check permission and input.</strong> In <code>capstone_denied</code>, pass an explicit empty set. Expect two Denied results, zero tool starts, and zero executions. The scripted final reply may still claim 17, even though the harness denied both tools. Also check the established errors for invalid types, extra fields, repeated IDs, and unknown names.</li><li><strong>Check replay.</strong> In <code>capstone_replay</code>, save to a new path, then load, validate, and replay the session. Compare messages, terminal status, turns, and execution count with the original. Replay must not call the model or tools. Reject invalid histories without executing anything.</li><li><strong>Check streams and context.</strong> Truncated replies must execute no tools. If required context exceeds the limit, stop before a model attempt. When you remove an old group, every retained call must keep its result.</li></ol>
+<pre tabindex="0" aria-label="Final Rust validation commands"><code>cargo fmt
+cargo fmt --check
+cargo build --locked --offline
+cargo test --locked --offline --test acceptance capstone_
+cargo test --locked --offline
+cargo run --locked --offline --quiet
+</code></pre>
+<p>The capstone filter must execute the six named tests you added, not zero. The full suite also runs all earlier tests. Replace <code>src/main.rs</code> from lesson 1 with a demo that runs the script, writes a fresh session using exclusive creation, loads and replays it, and prints the following four lines. Choose a fresh filename locally; never silently replace an existing run.</p>
+<pre tabindex="0" aria-label="Literal Rust demo output"><code>answer: 12 washers + 5 = 17 washers.
+model attempts: 3
+tool executions: 2
+replay equal: true
+</code></pre>
+<h3>Break it on purpose</h3><p>Change stock to 99 while leaving the script's add operands at 12 and 5. The fake still says 17. Your lookup assertion fails, and capstone_grounding must flag the inconsistent calculation. Restore stock after observing both failures. This separates planning quality from harness control flow.</p>
+<p><strong>Reflect.</strong> What have you proven about ownership and effects? What remains unproven about a live model's understanding and judgment?</p>
+<details><summary>Hint: assess correctness and rule compliance separately</summary><p>A model may give a fabricated final answer even when the harness denies a tool call. Check both whether the answer agrees with the recorded results and whether the harness obeyed permissions and limits.</p><details><summary>Choose the next change based on a need</summary><p>Your core now calls a model through an interface, selects registered tools, checks permission and limits, and records events for replay. Add a live provider, multiple calls per reply, async I/O, or better context measurement only when your next task needs it. MCP provides a protocol for communicating with tools. It does not replace your run loop. Parallel agents also need scheduling and shared-state controls, which this single-agent project does not require.</p></details></details>
+<fieldset><legend>Done when</legend><label class="check"><input type="checkbox" data-progress-key="ahl-v1-l12-build">All six capstone tests and the earlier acceptance categories pass offline.</label><label class="check"><input type="checkbox" data-progress-key="ahl-v1-l12-experiment">Changing stock makes the test detect that the scripted calculation ignores the lookup result.</label><label class="check"><input type="checkbox" data-progress-key="ahl-v1-l12-demo">My Rust demo prints the four expected lines and replay performs no actions.</label></fieldset><label class="notes-label" for="n12">Lesson 12 notes · saved locally</label><textarea id="n12" data-progress-key="ahl-v1-l12-notes" placeholder="What do you need the program to do next, and which tests support that change?"></textarea>
+</section>
+<section class="reference" id="contracts" aria-labelledby="contracts-title"><h2 id="contracts-title">Cumulative contract reference</h2>
+<p>This is your final target API, not a completed implementation or a provider API. Add fields in the lessons that introduce them. All callables are synchronous.</p>
+<pre tabindex="0" aria-label="Final Rust API specification"><code>pub struct RunOptions {
+    pub max_turns: usize,                    // default 4
+    pub max_tool_calls: usize,               // default 4
+    pub deadline_ms: Option&lt;u64&gt;,            // default None
+    pub allowed_tools: Option&lt;BTreeSet&lt;String&gt;&gt;, // default None
+    pub context_limit: Option&lt;usize&gt;,        // default None
+    pub reserve: usize,                      // default 0
+}
+
+pub fn run&lt;M: Model&gt;(
+    model: &amp;mut M,
+    user: &amp;str,
+    registry: &amp;mut Registry,
+    options: RunOptions,
+    emit: &amp;mut dyn FnMut(&amp;Event),
+    now_ms: &amp;mut dyn FnMut() -&gt; u64,
+    cancelled: &amp;mut dyn FnMut() -&gt; bool,
+) -&gt; RunResult
+
+// Final RunResult owns:
+// status: Status, text: String, messages: Vec&lt;Message&gt;,
+// turns: usize, events: Vec&lt;Event&gt;, tool_executions: usize
+</code></pre>
+<dl><dt>Types by module</dt><dd>types.rs defines Message, Reply, Call, Scalar, RawArgs, Observation, ModelError, and ToolError. model.rs defines Model, FakeModel, scripts, and validate_reply. tools.rs defines Tool, Registry, validation, and inventory_registry. harness.rs defines run, RunOptions, RunResult, and Status. trace.rs defines Event and EventKind. These modules can refer to each other's types. None of these values recursively contains itself.</dd>
+<dt>Outcome rules</dt><dd>Only Final has result text. Every other status has empty text. An Err from the model becomes Status::ModelError. If harness validation rejects a typed reply, return ProtocolError. Record tool failures as observations. Use Result for expected failures. A programming bug may panic and fail a test. The harness does not recover from panics or retry automatically.</dd>
+<dt>Validation order</dt><dd>Validate the reply and check that its call ID is unique within the run before dispatch. Then look up the tool, validate arguments, check permission, check cancellation and the deadline, check the execution budget, and execute. Unknown, invalid, and denied calls do not count as executions. Each model attempt counts even if it fails. Addition arguments must be between -1,000,000 and 1,000,000 inclusive. Lookup item names must contain 1 to 40 UTF-8 bytes.</dd>
+<dt>Message pairing</dt><dd>Append each accepted assistant call before its observation, keeping the same ID and name. Reject reused IDs before a second execution. A Final run must have no pending call. Budget, Deadline, and Cancelled may leave one accepted call that never started. In a completed session, every started tool must have an outcome, even if the run stops immediately after the tool returns.</dd>
+<dt>Replay consistency</dt><dd>Validate the order of model requests and replies, unique call IDs, tool starts and outcomes, observation names, and the single terminal event. The terminal turn count must equal the number of ModelRequested records. The execution count must equal the number of ToolStarted records. Final text must match the last accepted Final reply. ContextSelected records which messages a request used without changing the stored transcript. Reconstruct the run only after validation succeeds.</dd>
+<dt>Serialization boundary</dt><dd>Use serde's externally tagged enums, reject unknown fields, and set the Session version to 1. Decoding checks data types and fields. validate_session checks whether the events describe a valid history. Accept input files of at most 1 MiB and streamed replies of at most 16,384 bytes. These are exercise limits, not recommended defaults for every production system.</dd>
+<dt>Two unrelated kinds of persistence</dt><dd>Your Rust Session stores agent events. This HTML stores reading checklists and notes using localStorage key <code>agent-harness-lab-rust-progress-v1</code>. Backups have <code>type: "agent-harness-lab-rust-progress"</code>, <code>version: 1</code>, and exactly the known values. It neither reads nor rewrites the older course key <code>agent-harness-lab-progress-v1</code>. HTML progress backups are not agent sessions.</dd>
+<dt>Verification scope of the course</dt><dd>The local Rust checker extracts worked code from this HTML and compiles selected cumulative types and fixtures. It checks the starter's expected failure and success, compiler diagnostics, scripted observations, JSON ownership, and stream framing. Its limited test driver is not a completed learner harness. You still implement and test the full run loop, permissions, context selection, disk persistence, and replay. The browser checker tests this page's local progress controls and layout.</dd></dl>
+</section>
+<section class="reference" id="sources" aria-labelledby="sources-title"><h2 id="sources-title">Sources at fixed revisions</h2>
+<p>The source comparisons use revisions inspected on 19 September 2026 for the earlier course. The Rust revision also checked the Codex registry declarations used in lesson 4. These are dated source readings. They do not describe the latest upstream versions, and neither project was run for these comparisons.</p>
+<p>Pi: <code>c596d09d9cef6fdf0db2dd08f3eec8582b7fe8ba</code>.<br>Codex: <code>5ee2bdf1e0e04064bc427ae31a49a01e8f7064df</code>.</p>
+<p>After building a component, read its linked source. Compare how it passes data, which types it uses, and which production concerns your exercise leaves out. Pi shows a TypeScript implementation. The selected Codex files show Rust patterns, but are not a template for this small project.</p>
+<ul class="source-list">
+<li><a href="https://github.com/badlogic/pi-mono/blob/c596d09d9cef6fdf0db2dd08f3eec8582b7fe8ba/README.md" rel="noopener noreferrer">Pi / README.md</a><br>Read how Pi divides package responsibilities and documents permission and isolation limits.</li>
+<li><a href="https://github.com/badlogic/pi-mono/blob/c596d09d9cef6fdf0db2dd08f3eec8582b7fe8ba/packages/agent/src/agent-loop.ts" rel="noopener noreferrer">Pi / packages/agent/src/agent-loop.ts</a><br>Read runLoop, prepareToolCall, streamAssistantResponse, and failToolCallsFromTruncatedMessage. Follow how a completed reply reaches tool execution.</li>
+<li><a href="https://github.com/badlogic/pi-mono/blob/c596d09d9cef6fdf0db2dd08f3eec8582b7fe8ba/packages/coding-agent/src/core/session-manager.ts" rel="noopener noreferrer">Pi / packages/coding-agent/src/core/session-manager.ts</a><br>Read SessionEntryBase and buildSessionContext. Compare history linked by parent IDs with your linear session.</li>
+<li><a href="https://github.com/openai/codex/blob/5ee2bdf1e0e04064bc427ae31a49a01e8f7064df/README.md" rel="noopener noreferrer">Codex / README.md</a><br>Read the overview of the local coding CLI. This course does not inspect the cloud service.</li>
+<li><a href="https://github.com/openai/codex/blob/5ee2bdf1e0e04064bc427ae31a49a01e8f7064df/codex-rs/core/src/tools/registry.rs" rel="noopener noreferrer">Codex / codex-rs/core/src/tools/registry.rs</a><br>CoreToolRuntime extends ToolExecutor&lt;ToolInvocation&gt;. Its borrowed dyn ToolOutput arguments give a concrete Rust trait-object reading exercise. RegisteredTool and response conversion provide further context.</li>
+<li><a href="https://github.com/openai/codex/blob/5ee2bdf1e0e04064bc427ae31a49a01e8f7064df/codex-rs/core/src/tools/orchestrator.rs" rel="noopener noreferrer">Codex / codex-rs/core/src/tools/orchestrator.rs</a><br>Read ToolOrchestrator::run and run_attempt. Compare where approval ends and execution begins. Similar structure does not establish equivalent security.</li>
+<li><a href="https://github.com/openai/codex/blob/5ee2bdf1e0e04064bc427ae31a49a01e8f7064df/codex-rs/core/src/context_manager/history.rs" rel="noopener noreferrer">Codex / codex-rs/core/src/context_manager/history.rs</a><br>Read ContextManager and conversation_history_snapshot. Compare stored history with the messages sent to the model.</li>
+</ul>
+<details><summary>Optional read-only source checks</summary><p>GitHub CLI and a connection are needed only for these source readings. They do not install or execute upstream code.</p><pre tabindex="0" aria-label="Read pinned sources"><code>gh api repos/badlogic/pi-mono/commits/c596d09d9cef6fdf0db2dd08f3eec8582b7fe8ba --jq .sha
+gh api repos/openai/codex/commits/5ee2bdf1e0e04064bc427ae31a49a01e8f7064df --jq .sha
+gh api 'repos/openai/codex/contents/codex-rs/core/src/tools/registry.rs?ref=5ee2bdf1e0e04064bc427ae31a49a01e8f7064df' \
+  -H 'Accept: application/vnd.github.raw+json'
+</code></pre></details><a class="back" href="#start" target="_self">Return to setup</a>
+</section>
+<footer><p>Agent harness lab. Rust course edition 1. Local notebook.</p><p>You can read the lessons, use the controls, and view the code without runtime network requests. External reading links and initial installation of tools or dependencies need a connection. You do not need an API key or a live model for the core project. The GitHub Pages edition publishes the lesson content, not your checklist progress or notes. Those remain private to your browser storage and are not uploaded by this page. There is no automatic synchronization between devices, browsers, or URLs. To resume elsewhere, export a JSON backup here and explicitly import it at the destination. Before switching from a local file or another URL to GitHub Pages, export from the original page: the new origin has separate browser storage. Keep your backup private.</p></footer>
+</div></main></div>
+<script>
+(() => {
+  'use strict';
+  const STORAGE_KEY = 'agent-harness-lab-rust-progress-v1';
+  const TYPE = 'agent-harness-lab-rust-progress';
+  const VERSION = 1;
+  const MAX_BYTES = 2 * 1024 * 1024;
+  const MAX_NOTE = 20000;
+  const controls = new Map([...document.querySelectorAll('[data-progress-key]')]
+    .map(control => [control.dataset.progressKey, control]));
+  const checks = [...controls.values()].filter(control => control.type === 'checkbox');
+  const notes = [...controls.values()].filter(control => control.tagName === 'TEXTAREA');
+  const storageStatus = document.getElementById('storage-status');
+  const backupStatus = document.getElementById('backup-status');
+  const completion = document.getElementById('completion');
+  const fileInput = document.getElementById('import-progress');
+  const exportButton = document.getElementById('export-progress');
+  const preview = document.getElementById('restore-preview');
+  let pendingRestore = null;
+  let importRequest = 0;
+
+  function snapshot() {
+    return {type: TYPE, version: VERSION, values: Object.fromEntries(
+      [...controls].map(([key, control]) => [key,
+        control.type === 'checkbox' ? control.checked : control.value]))};
+  }
+
+  function parseRecord(text) {
+    if (new Blob([text]).size > MAX_BYTES) throw new Error('File exceeds 2 MiB.');
+    const record = JSON.parse(text);
+    const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+    if (isObject(record) && record.type === 'agent-harness-lab-progress') {
+      throw new Error('This is a Python course backup. Rust assignments start fresh; the original progress remains untouched. Choose a Rust edition 1 backup.');
+    }
+    if (!isObject(record) || Object.keys(record).sort().join(',') !== 'type,values,version' ||
+        record.type !== TYPE || record.version !== VERSION || !isObject(record.values)) {
+      throw new Error('Expected an Agent harness lab Rust edition 1 progress backup.');
+    }
+    const keys = Object.keys(record.values);
+    if (keys.length !== controls.size || keys.some(key => !controls.has(key))) {
+      throw new Error('Backup must contain exactly the known progress keys.');
+    }
+    for (const [key, control] of controls) {
+      const value = record.values[key];
+      if (control.type === 'checkbox' ? typeof value !== 'boolean' :
+          typeof value !== 'string' || value.length > MAX_NOTE) {
+        throw new Error('Checkboxes must be booleans; notes must be strings of at most 20,000 characters.');
+      }
+    }
+    return record;
+  }
+
+  function updateCompletion() {
+    completion.textContent = `${checks.filter(control => control.checked).length} of ${checks.length} checklist items completed (self-reported, including lesson 11).`;
+  }
+  function applyRecord(record) {
+    for (const [key, control] of controls) {
+      if (control.type === 'checkbox') control.checked = record.values[key];
+      else control.value = record.values[key];
+    }
+    updateCompletion();
+  }
+  function saveLocally() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot()));
+      storageStatus.textContent = 'Saved in this browser only. Export a backup for a durable copy.';
+    } catch {
+      storageStatus.textContent = 'Not saved in browser storage. Current changes are only in this open page. Export a JSON backup before closing.';
+    }
+  }
+  function clearPreview() {
+    importRequest += 1;
+    pendingRestore = null;
+    preview.hidden = true;
+    fileInput.value = '';
+  }
+  for (const control of notes) control.maxLength = MAX_NOTE;
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved === null) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot()));
+      storageStatus.textContent = 'Browser saving is available. Checkboxes and notes save automatically here.';
+    } else {
+      applyRecord(parseRecord(saved));
+      storageStatus.textContent = 'Loaded saved progress from this browser. Changes save automatically here.';
+    }
+  } catch {
+    storageStatus.textContent = 'Saved progress could not be read or browser storage is unavailable. The stored copy was not replaced. Fields work in this page; export a backup. Your next edit will attempt a new browser save.';
+  }
+  updateCompletion();
+  for (const control of controls.values()) {
+    control.addEventListener(control.type === 'checkbox' ? 'change' : 'input', () => {
+      const restoring = pendingRestore || backupStatus.textContent.startsWith('Reading backup');
+      clearPreview();
+      if (restoring) backupStatus.textContent = 'Restore cancelled because progress changed. Select the backup again to review it.';
+      updateCompletion();
+      saveLocally();
+    });
+  }
+  exportButton.disabled = false;
+  fileInput.disabled = false;
+  exportButton.addEventListener('click', () => {
+    let url;
+    try {
+      const blob = new Blob([JSON.stringify(snapshot(), null, 2) + '\n'], {type: 'application/json'});
+      url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.target = '_self';
+      link.download = `agent-harness-lab-rust-progress-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      backupStatus.textContent = 'JSON backup download requested. Check your downloads and keep the file; this page cannot verify it was saved to disk.';
+    } catch {
+      backupStatus.textContent = 'Backup download could not start. Keep this page open and try again in a browser that allows local downloads.';
+    } finally {
+      if (url) setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+  });
+  fileInput.addEventListener('change', async () => {
+    const file = fileInput.files[0];
+    clearPreview();
+    const request = importRequest;
+    if (!file) {
+      backupStatus.textContent = 'No backup selected. Current progress is unchanged.';
+      return;
+    }
+    backupStatus.textContent = 'Reading backup locally. Current progress is unchanged.';
+    try {
+      if (file.size > MAX_BYTES) throw new Error('File exceeds 2 MiB.');
+      const record = parseRecord(await file.text());
+      if (request !== importRequest) return;
+      pendingRestore = record;
+      const completed = checks.filter(control => record.values[control.dataset.progressKey]).length;
+      const written = notes.filter(control => record.values[control.dataset.progressKey].length > 0).length;
+      document.getElementById('restore-summary').textContent = `Rust backup contains ${completed} of ${checks.length} completed items and ${written} nonempty notes. Confirm to replace ALL current Rust checklist items and notes. Export first if you need the current copy.`;
+      preview.hidden = false;
+      backupStatus.textContent = 'Backup validated. Review the preview, then confirm replacement or cancel. Nothing has changed yet.';
+    } catch (error) {
+      if (request !== importRequest) return;
+      backupStatus.textContent = `Backup rejected. Current progress is unchanged. ${error instanceof SyntaxError ? 'Invalid JSON.' : error.message}`;
+    }
+  });
+  document.getElementById('confirm-restore').addEventListener('click', () => {
+    if (!pendingRestore) return;
+    applyRecord(pendingRestore);
+    clearPreview();
+    saveLocally();
+    backupStatus.textContent = 'Progress replaced with the reviewed backup. See browser storage status above.';
+    fileInput.focus();
+  });
+  document.getElementById('cancel-restore').addEventListener('click', () => {
+    clearPreview();
+    backupStatus.textContent = 'Restore cancelled. Current progress is unchanged.';
+    fileInput.focus();
+  });
+})();
+</script>
+</body>
+</html>
