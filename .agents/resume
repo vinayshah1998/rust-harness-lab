@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Fast wake-up check: the Rust toolchain installed by .agents/setup is still present.
+set -euo pipefail
+
+if ! "$HOME/.cargo/bin/rustc" --version >/dev/null 2>&1; then
+  echo "Rust toolchain missing; rerun .agents/setup" >&2
+  exit 1
+fi

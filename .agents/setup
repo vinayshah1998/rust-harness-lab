@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+# Prepares an Amp orb to check the Rust examples in index.html:
+# the pinned toolchain (rustup + Rust 1.98.1 with rustfmt) and a warm Cargo
+# registry holding the exact JSON crates lesson 8 uses, so `--offline` works.
+set -euo pipefail
+
+RUST_VERSION="1.98.1"
+SERDE_VERSION="=1.0.190"
+SERDE_JSON_VERSION="=1.0.108"
+
+step() {
+  local name="$1"; shift
+  local start=$SECONDS
+  echo "==> $name"
+  "$@"
+  echo "    done in $((SECONDS - start))s"
+}
+
+export CARGO_HOME="$HOME/.cargo"
+export RUSTUP_HOME="$HOME/.rustup"
+export PATH="$CARGO_HOME/bin:$PATH"
+
+install_rustup() {
+  if command -v rustup >/dev/null 2>&1; then
+    echo "    rustup already installed"
+    return
+  fi
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs |
+    sh -s -- -y --no-modify-path --profile minimal --default-toolchain none
+}
+
+install_toolchain() {
+  rustup toolchain install "$RUST_VERSION" --profile minimal --component rustfmt
+  # Plain `rustc`/`cargo` outside a pinned project resolve to the tested release.
+  rustup default "$RUST_VERSION"
+}
+
+persist_path() {
+  local marker="# rust-harness-lab: Rust toolchain"
+  if ! grep -Fqx "$marker" "$HOME/.bash_profile" 2>/dev/null; then
+    printf '\n%s\n. "$HOME/.cargo/env"\n' "$marker" >> "$HOME/.bash_profile"
+  fi
+}
+
+# Fetch the lesson 8 dependencies into the shared Cargo registry cache so
+# `cargo build --locked --offline` in a learner project works without network.
+warm_registry() {
+  local dir="$HOME/.cache/rust-harness-lab/deps-warmup"
+  mkdir -p "$dir/src"
+  cat > "$dir/Cargo.toml" <<EOF
+[package]
+name = "deps-warmup"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+serde = { version = "$SERDE_VERSION", features = ["derive"] }
+serde_json = "$SERDE_JSON_VERSION"
+EOF
+  [ -f "$dir/src/lib.rs" ] || : > "$dir/src/lib.rs"
+  cargo "+$RUST_VERSION" fetch --quiet --manifest-path "$dir/Cargo.toml"
+}
+
+step "Install rustup" install_rustup
+step "Install Rust $RUST_VERSION (+rustfmt)" install_toolchain
+step "Persist Cargo PATH in ~/.bash_profile" persist_path
+step "Warm Cargo registry (serde $SERDE_VERSION, serde_json $SERDE_JSON_VERSION)" warm_registry
+
+rustc --version
+cargo --version
