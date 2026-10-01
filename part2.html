@@ -1,0 +1,3917 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Part 2 of How to Build an Agent in Rust: approval prompts, a run log, saved sessions you can replay, spending limits, context windows, streaming, and thinking models. You write the code against given tests.">
+<title>How to Build an Agent in Rust, Part 2: Make it trustworthy</title>
+<base target="_blank">
+<style>
+:root{--paper:oklch(96% .018 88);--panel:oklch(92% .022 88);--ink:oklch(25% .012 250);--accent:oklch(39% .065 230);--rust:oklch(45% .11 45);--mute:oklch(44% .015 250);--line:oklch(67% .025 88);--body:"Charter","Bitstream Charter",Georgia,serif;--heading:"Optima","Candara","Segoe UI",sans-serif;--mono:"SFMono-Regular",Consolas,"Liberation Mono",monospace}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:1.08rem/1.65 var(--body)}
+main{max-width:46rem;margin:0 auto;padding:clamp(1.25rem,4vw,3.5rem) 1.25rem 4rem}
+a{color:var(--accent);text-underline-offset:.2em;overflow-wrap:anywhere}a:hover{text-decoration-thickness:2px}
+:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+h1,h2,h3{font-family:var(--heading);line-height:1.18;text-wrap:balance}
+h1{font-size:clamp(2.2rem,5vw,3.6rem);margin:.5rem 0 .25rem}
+h2{font-size:clamp(1.55rem,3vw,2.1rem);margin:3.5rem 0 1rem;padding-top:1.5rem;border-top:1px solid var(--line)}
+h3{font-size:1.2rem;margin:2rem 0 .5rem}
+.kicker{font:.85rem/1.5 var(--mono);color:var(--mute);margin:0}
+.subtitle{font:italic 1.3rem/1.4 var(--body);color:var(--mute);margin:0 0 2rem}
+.lede{font-size:1.2rem}
+code{font:.86em/1.5 var(--mono);background:var(--panel);padding:.05em .3em;border-radius:3px}
+pre{overflow-x:auto;padding:1rem;background:var(--panel);border:1px solid var(--line);font:.84rem/1.6 var(--mono);tab-size:4;margin:1rem 0 1.5rem}
+:not(pre)>code,samp{overflow-wrap:anywhere}
+pre code{background:none;padding:0;font:inherit}
+.file{font:.82rem/1.4 var(--mono);color:var(--mute);margin:1.5rem 0 -.75rem}
+.toc{background:var(--panel);border:1px solid var(--line);padding:1rem 1.5rem;margin:2rem 0;font:1rem/1.6 var(--heading)}
+.toc ol{margin:.25rem 0;padding-left:1.25rem}
+.transcript{background:oklch(22% .015 250);color:oklch(92% .01 250);font:.86rem/1.55 var(--mono);padding:1rem 1.1rem;margin:1rem 0 1.5rem;border-radius:4px;overflow-x:auto}
+.transcript p{margin:0 0 .6rem;overflow-wrap:anywhere}.transcript p:last-child{margin:0}
+.transcript code{background:oklch(30% .015 250);color:inherit}
+.t-cmd{color:oklch(75% .01 250)}
+.t-tool{white-space:pre-wrap}
+.t-stop{color:oklch(72% .15 25)}
+.t-you{color:oklch(72% .12 250)}.t-claude{color:oklch(83% .13 90)}.t-tool,.t-tool b{color:oklch(78% .14 150)}
+.transcript-note{font:.9rem/1.5 var(--heading);color:var(--mute);margin:-.75rem 0 1.5rem}
+aside.rust{border-left:4px solid var(--rust);background:oklch(94% .025 60);padding:.9rem 1.2rem;margin:1.5rem 0}
+aside.rust h4{font:700 .8rem/1.4 var(--heading);letter-spacing:.08em;text-transform:uppercase;color:var(--rust);margin:0 0 .4rem}
+aside.rust h4 code,.try h4 code{text-transform:none;letter-spacing:0}
+aside.rust p{margin:.5rem 0}aside.rust p:last-child{margin-bottom:0}
+aside.rust .read{font:.92rem/1.5 var(--heading)}
+aside.rust code{background:oklch(90% .03 60)}
+.try{border:1px dashed var(--accent);padding:.9rem 1.2rem;margin:1.5rem 0}
+.try h4{font:700 .8rem/1.4 var(--heading);letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin:0 0 .4rem}
+.try p:last-child{margin-bottom:0}
+.diagram-figure{margin:1.5rem 0}
+pre.diagram{line-height:1.25;background:var(--paper)}
+.diagram-figure figcaption{font:.9rem/1.5 var(--heading);color:var(--mute);margin-top:.5rem}
+.next-part{border:2px solid var(--accent);padding:1rem 1.25rem;margin:2rem 0;font:1.02rem/1.6 var(--heading)}
+.toc-next{margin:.75rem 0 0}
+details.warmup{border:1px solid var(--line);background:var(--panel);padding:.25rem 1.1rem;margin:1.5rem 0}
+details.warmup>summary{font:600 1rem/1.5 var(--heading)}
+.warm-tag{font:700 .78rem/1 var(--heading);letter-spacing:.08em;text-transform:uppercase;color:var(--paper);background:var(--accent);padding:.2rem .45rem;margin-right:.4rem;vertical-align:.1em}
+details.warmup pre{background:var(--paper)}
+.warm-run{font:.92rem/1.5 var(--heading)}
+details.warmup :not(pre)>code{background:var(--paper)}
+details.warmup .read{font:.92rem/1.5 var(--heading)}
+details.answer{border:0;border-top:1px dashed var(--line);margin:.5rem 0 .5rem;padding:.25rem 0 0}
+details.answer>summary{color:var(--accent)}
+details{margin:1.5rem 0;border-block:1px solid var(--line);padding:.5rem 0}
+summary{cursor:pointer;font:600 1rem/1.5 var(--heading);padding:.4rem 0}
+table{display:block;overflow-x:auto;border-collapse:collapse;width:100%;font:.95rem/1.45 var(--heading);margin:1rem 0}
+th,td{text-align:left;vertical-align:top;padding:.5rem .6rem;border-bottom:1px solid var(--line)}
+th{font-weight:700;border-bottom:2px solid var(--ink)}
+td code{font-size:.82em}
+footer{margin-top:4rem;padding-top:1.5rem;border-top:2px solid var(--ink);font:.9rem/1.6 var(--heading);color:var(--mute)}
+@media(max-width:480px){pre,.transcript{font-size:.76rem;padding:.75rem}body{font-size:1.02rem}}
+@media print{.transcript{background:white;color:black;border:1px solid #999}.t-you,.t-claude,.t-tool,.t-tool b,.t-cmd{color:black}}
+</style>
+<style>
+.reading{border-left:4px solid var(--accent);background:var(--panel);padding:.9rem 1.2rem;margin:1.5rem 0}
+.reading h4{font:700 .8rem/1.4 var(--heading);letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin:0 0 .4rem}
+.reading p:last-child{margin-bottom:0}
+.done{border-top:1px solid var(--line);padding-top:.75rem;margin-top:1.5rem}
+details.hints>summary,details.solution>summary{color:var(--accent)}
+details.solution pre{background:var(--paper)}
+</style>
+</head>
+<body>
+<main>
+<p class="kicker">Agent harness lab / Rust / Part 2</p>
+<h1>Make it trustworthy</h1>
+<p class="subtitle">or: An Agent You Can Leave Alone With Your Files</p>
+
+<p class="lede">At the end of <a target="_self" href="index.html">part 1</a> we had a code-editing agent that works. Part 2 turns it into one you can trust.</p>
+<p>Over eight chapters the agent learns to ask before it changes anything, and to keep a record of what it actually did. It saves sessions you can replay without repeating a single action, and it stops before it spends too much. It also survives conversations longer than the model can read at once, streams its answers as they're written, and works with models that think before they answer. Each chapter starts from a concrete way the part 1 agent can let you down.</p>
+
+<aside class="rust"><h4>How part 2 works · you write the code</h4>
+<p>Part 1 showed you every line. Part 2 changes the deal, because the best way to get better at Rust is to write it. Each chapter gives you:</p>
+<ul>
+<li><strong>Why</strong> the change matters for an agent.</li>
+<li><strong>The specification</strong>: exactly what the code must do.</li>
+<li><strong>The tests</strong>, ready to paste into <code>mod tests</code>. They won't compile until you've written the code, and that's expected.</li>
+<li><strong>Hints</strong>, then a <strong>reference solution</strong>, both collapsed. Try first. Open the hints when you're stuck, and open the solution once your tests pass, to compare.</li>
+<li><strong>Done when</strong>, <strong>Break it on purpose</strong>, and a <strong>real agent to read</strong>: the same idea in Pi or Codex, at a fixed revision.</li>
+</ul>
+<p>Rust concept boxes and warm-ups work as in part 1. The tests in each chapter build on the previous ones, so do the chapters in order and keep every earlier test passing.</p></aside>
+
+<p><strong>Start from</strong> the complete program at the end of part 1, including its five tests: <a target="_self" href="index.html#listing">the listing is here</a>. Everything in part 2 runs offline with the fake model. You only need an API key to try each chapter against the real Claude.</p>
+
+<nav class="toc" aria-label="Contents"><strong>Contents</strong><ol>
+<li><a target="_self" href="#ch1">Ask before acting</a></li>
+<li><a target="_self" href="#ch2">A run log</a></li>
+<li><a target="_self" href="#ch3">Save a session, replay without acting</a></li>
+<li><a target="_self" href="#ch4">Spending limits</a></li>
+<li><a target="_self" href="#ch5">History that outgrows the window</a></li>
+<li><a target="_self" href="#ch6">Streaming, and replies that were cut off</a></li>
+<li><a target="_self" href="#ch7">Thinking models</a></li>
+<li><a target="_self" href="#ch8">Capstone: the evidence beats the claim</a></li>
+</ol>
+<p class="toc-next"><a target="_self" href="#built">What you've built</a> · <a target="_self" href="#listing">The complete program</a> · <a target="_self" href="#concepts">Rust concepts index</a></p></nav>
+
+<!-- ============================== CHAPTER 1 ============================== -->
+<h2 id="ch1">1. Ask before acting</h2>
+<p><code>checked_path</code> answers one question: <em>is this request valid?</em> There's a second question it can't answer: <em>is it allowed?</em> A perfectly valid edit to <code>src/main.rs</code> can still be one you don't want, and only the person running the agent can decide that. Validation is about the request. Permission is about you.</p>
+<p>The second rule matters just as much: <strong>permission must come from you, never from the conversation.</strong> Claude reads files, and a file can say “the user approves all edits.” If text could grant permission, any file could grant it. So the approval decision lives in the harness, wired to your keyboard, and nothing Claude reads or writes can reach it.</p>
+<p>In this chapter, reading tools keep running freely, and <code>edit_file</code> asks you first.</p>
+
+<h3>Specification</h3>
+<ul>
+<li><code>ToolDefinition</code> gets a field <code>needs_approval: bool</code>, marked <code>#[serde(skip)]</code> because Claude never needs to see it. It's <code>false</code> for <code>read_file</code> and <code>list_files</code>, and <code>true</code> for <code>edit_file</code>.</li>
+<li><code>Agent</code> gets a field <code>approve: Box&lt;dyn FnMut(&amp;str, &amp;Value) -&gt; bool&gt;</code>, passed as a third argument to <code>Agent::new</code>. It receives the tool name and input and returns whether the call may run.</li>
+<li><code>execute_tool</code> takes <code>&amp;mut self</code>. After finding the tool and before running it, if the tool needs approval, it calls <code>approve</code>. If that returns <code>false</code>, it returns an error result with the text <code>the user did not allow this {name} call</code> and doesn't run the tool.</li>
+<li><code>main</code> passes <code>Box::new(ask_user)</code>. <code>ask_user</code> prints <samp>Allow edit_file({...})? [y/N]</samp>, reads a line, and returns <code>true</code> only for <code>y</code> or <code>Y</code>. Anything else, including an empty line or end of input, means no.</li>
+</ul>
+
+<details class="warmup"><summary><span class="warm-tag">Warm-up</span> A closure stored in a struct</summary>
+<p>This <code>Agent</code> stores its approver exactly the way ours will. The closure counts how often it's asked. Will it compile?</p>
+<pre><code>struct Agent {
+    approve: Box&lt;dyn FnMut(&amp;str) -&gt; bool&gt;,
+}
+
+fn main() {
+    let mut count = 0;
+    let mut agent = Agent {
+        approve: Box::new(|name| {
+            count += 1;
+            name == "read_file"
+        }),
+    };
+    println!("{}", (agent.approve)("edit_file"));
+    drop(agent);
+    println!("asked {count} times");
+}</code></pre>
+<p class="warm-run"><a href="https://play.rust-lang.org/?version=stable&amp;mode=debug&amp;edition=2024&amp;code=struct%20Agent%20%7B%0A%20%20%20%20approve%3A%20Box%3Cdyn%20FnMut%28%26str%29%20-%3E%20bool%3E%2C%0A%7D%0A%0Afn%20main%28%29%20%7B%0A%20%20%20%20let%20mut%20count%20%3D%200%3B%0A%20%20%20%20let%20mut%20agent%20%3D%20Agent%20%7B%0A%20%20%20%20%20%20%20%20approve%3A%20Box%3A%3Anew%28%7Cname%7C%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20count%20%2B%3D%201%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20name%20%3D%3D%20%22read_file%22%0A%20%20%20%20%20%20%20%20%7D%29%2C%0A%20%20%20%20%7D%3B%0A%20%20%20%20println%21%28%22%7B%7D%22%2C%20%28agent.approve%29%28%22edit_file%22%29%29%3B%0A%20%20%20%20drop%28agent%29%3B%0A%20%20%20%20println%21%28%22asked%20%7Bcount%7D%20times%22%29%3B%0A%7D%0A">Run it in the Rust Playground</a>, but write down your prediction first.</p>
+<details class="answer"><summary>Show the answer</summary>
+<p><strong>No:</strong> <code>error[E0597]: `count` does not live long enough</code>. The compiler adds a note that explains everything: <code>Box&lt;dyn FnMut(&amp;str) -&gt; bool&gt;</code> in a struct field “actually means” <code>Box&lt;dyn FnMut(&amp;str) -&gt; bool + 'static&gt;</code>.</p>
+<p>A boxed closure in a field can outlive the function that created it, so by default Rust requires it to borrow nothing that could go away. That's what <code>'static</code> means here. This closure borrows the local variable <code>count</code>, so it doesn't qualify.</p>
+<p>Now try writing <code>move |name|</code> instead. It compiles, and prints <samp>false</samp> and then <samp>asked 0 times</samp>. <code>move</code> gave the closure its own copy of <code>count</code>, because integers are <code>Copy</code>, so the outer <code>count</code> never changes. The compiler even warns <code>value captured by `count` is never read</code>. That's why our approvers either capture nothing, like the tests' closures, or are plain functions, like <code>ask_user</code>. Sharing a counter between a closure and its creator takes shared ownership, <code>Rc&lt;Cell&lt;usize&gt;&gt;</code>, which the Book covers in chapter 15.</p>
+<p class="read">Read: <a href="https://doc.rust-lang.org/book/ch13-01-closures.html#capturing-references-or-moving-ownership">§13.1 Capturing references or moving ownership</a> · <a href="https://doc.rust-lang.org/book/ch10-03-lifetime-syntax.html#the-static-lifetime">§10.3 The static lifetime</a> · <a href="https://doc.rust-lang.org/book/ch15-04-rc.html">§15.4 Rc</a></p></details>
+</details>
+
+<aside class="rust"><h4>Rust concept · behavior in a field, and borrowing two fields at once</h4>
+<p><code>Box&lt;dyn FnMut(&amp;str, &amp;Value) -&gt; bool&gt;</code> is “any callable with this shape, on the heap.” We use <code>FnMut</code> rather than <code>Fn</code> so an approver may keep state, such as remembering “always allow this file.” A plain function like <code>ask_user</code> fits the box too, because functions implement the <code>Fn</code> traits.</p>
+<p>Calling it looks like the function pointer in part 1: <code>(self.approve)(name, input)</code>, with parentheses so Rust doesn't look for a method named <code>approve</code>. Calling an <code>FnMut</code> needs mutable access, which is why <code>execute_tool</code> now takes <code>&amp;mut self</code>.</p>
+<p>Inside <code>execute_tool</code>, <code>tool</code> is borrowed from <code>self.tools</code> while we call <code>self.approve</code> mutably. That's fine, because Rust tracks borrows of different fields separately. But if you wrap the call in a helper method, <code>fn ask(&amp;mut self, ...)</code>, you'll get <code>error[E0502]: cannot borrow `*self` as mutable because it is also borrowed as immutable</code>. A method borrows <em>all</em> of <code>self</code>, not one field.</p>
+<p class="read">Read: <a href="https://doc.rust-lang.org/book/ch13-01-closures.html#moving-captured-values-out-of-closures-and-the-fn-traits">§13.1 The Fn traits</a> · <a href="https://doc.rust-lang.org/book/ch18-02-trait-objects.html">§18.2 Trait objects</a> · <a href="https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html#mutable-references">§4.2 Mutable references</a></p></aside>
+
+<h3>Tests</h3>
+<p>Replace the <code>agent</code> helper in <code>mod tests</code> and add the rest. The new <code>agent</code> helper uses an approver that <em>panics</em>, so every earlier test now also proves that reading and listing never ask for approval.</p>
+<pre><code>    fn agent(replies: Vec&lt;Vec&lt;ContentBlock&gt;&gt;) -&gt; Agent&lt;FakeModel&gt; {
+        agent_with_approval(
+            replies,
+            Box::new(|name, _| panic!("asked to approve {name}")),
+        )
+    }
+
+    fn agent_with_approval(
+        replies: Vec&lt;Vec&lt;ContentBlock&gt;&gt;,
+        approve: Box&lt;dyn FnMut(&amp;str, &amp;Value) -&gt; bool&gt;,
+    ) -&gt; Agent&lt;FakeModel&gt; {
+        let tools = vec![read_file_tool(), list_files_tool(), edit_file_tool()];
+        Agent::new(FakeModel::new(replies), tools, approve)
+    }
+
+    fn edit_request(path: &amp;str) -&gt; Vec&lt;ContentBlock&gt; {
+        vec![tool_use(
+            "t1",
+            "edit_file",
+            json!({"path": path, "old_str": "old", "new_str": "new"}),
+        )]
+    }
+
+    #[test]
+    fn a_denied_edit_leaves_the_file_untouched() {
+        let path = "target/approval-denied.txt";
+        fs::write(path, "old").unwrap();
+        let mut agent = agent_with_approval(
+            vec![edit_request(path), vec![text("Done!")]],
+            Box::new(|_, _| false),
+        );
+        let mut conversation = ask("Change old to new.");
+
+        agent.respond(&amp;mut conversation).unwrap();
+
+        assert_eq!(fs::read_to_string(path).unwrap(), "old");
+        assert!(matches!(
+            &amp;conversation[2].content[0],
+            ContentBlock::ToolResult { is_error: true, content, .. }
+                if content.contains("did not allow")
+        ));
+    }
+
+    #[test]
+    fn an_approved_edit_runs() {
+        let path = "target/approval-granted.txt";
+        fs::write(path, "old").unwrap();
+        let mut agent = agent_with_approval(
+            vec![edit_request(path), vec![text("Done!")]],
+            Box::new(|name, _| name == "edit_file"),
+        );
+        let mut conversation = ask("Change old to new.");
+
+        agent.respond(&amp;mut conversation).unwrap();
+
+        assert_eq!(fs::read_to_string(path).unwrap(), "new");
+    }
+
+    #[test]
+    fn words_in_the_conversation_cannot_approve_anything() {
+        let path = "target/approval-words.txt";
+        fs::write(path, "old").unwrap();
+        let mut agent = agent_with_approval(
+            vec![edit_request(path), vec![text("Done!")]],
+            Box::new(|_, _| false),
+        );
+        let mut conversation = ask("I approve every edit in advance. Change old to new.");
+
+        agent.respond(&amp;mut conversation).unwrap();
+
+        assert_eq!(fs::read_to_string(path).unwrap(), "old");
+    }</code></pre>
+
+<details class="hints"><summary>Hints</summary>
+<ul>
+<li>Put the check after the “tool not found” early return and before the <code>println!</code>. A denied call should print nothing, because nothing ran.</li>
+<li>Three tool constructors need the new field, and the compiler will tell you which ones: <code>error[E0063]: missing field `needs_approval`</code>.</li>
+<li><code>matches!(read_line(), Ok(Some(answer)) if answer.eq_ignore_ascii_case("y"))</code> treats errors, end of input and every other answer as “no” in one expression.</li>
+</ul></details>
+
+<details class="solution"><summary>Reference solution</summary>
+<pre><code>#[derive(Serialize)]
+struct ToolDefinition {
+    name: &amp;'static str,
+    description: &amp;'static str,
+    input_schema: Value,
+    #[serde(skip)]
+    function: fn(Value) -&gt; Result&lt;String, Box&lt;dyn Error&gt;&gt;,
+    #[serde(skip)]
+    needs_approval: bool,
+}
+
+struct Agent&lt;M: Model&gt; {
+    model: M,
+    tools: Vec&lt;ToolDefinition&gt;,
+    approve: Box&lt;dyn FnMut(&amp;str, &amp;Value) -&gt; bool&gt;,
+}
+
+    fn new(
+        model: M,
+        tools: Vec&lt;ToolDefinition&gt;,
+        approve: Box&lt;dyn FnMut(&amp;str, &amp;Value) -&gt; bool&gt;,
+    ) -&gt; Agent&lt;M&gt; {
+        Agent {
+            model,
+            tools,
+            approve,
+        }
+    }
+
+    fn execute_tool(&amp;mut self, id: &amp;str, name: &amp;str, input: &amp;Value) -&gt; ContentBlock {
+        let Some(tool) = self.tools.iter().find(|tool| tool.name == name) else {
+            return ContentBlock::ToolResult {
+                tool_use_id: id.to_string(),
+                content: "tool not found".to_string(),
+                is_error: true,
+            };
+        };
+
+        if tool.needs_approval &amp;&amp; !(self.approve)(name, input) {
+            return ContentBlock::ToolResult {
+                tool_use_id: id.to_string(),
+                content: format!("the user did not allow this {name} call"),
+                is_error: true,
+            };
+        }
+
+        println!("\x1b[92mtool\x1b[0m: {name}({input})");
+        let (content, is_error) = match (tool.function)(input.clone()) {
+            Ok(output) =&gt; (output, false),
+            Err(err) =&gt; (err.to_string(), true),
+        };
+
+        ContentBlock::ToolResult {
+            tool_use_id: id.to_string(),
+            content,
+            is_error,
+        }
+    }
+
+fn ask_user(name: &amp;str, input: &amp;Value) -&gt; bool {
+    print!("\x1b[95mAllow {name}({input})? [y/N]\x1b[0m ");
+    if io::stdout().flush().is_err() {
+        return false;
+    }
+    matches!(read_line(), Ok(Some(answer)) if answer.eq_ignore_ascii_case("y"))
+}</code></pre>
+<p>In <code>main</code>: <code>    let mut agent = Agent::new(Claude { api_key }, tools, Box::new(ask_user));</code>. In <code>edit_file_tool</code>, add <code>needs_approval: true,</code>, and in the other two constructors, <code>needs_approval: false,</code>.</p></details>
+
+<p class="done"><strong>Done when</strong> <code>cargo test</code> passes all 8 tests, and against the real Claude, answering <kbd>n</kbd> to an edit leaves the file untouched while Claude is told why.</p>
+
+<div class="try"><h4>Break it on purpose</h4>
+<p>In <code>edit_file_tool</code>, change <code>needs_approval: true</code> to <code>false</code>. Predict which tests fail. <code>a_denied_edit_leaves_the_file_untouched</code> and <code>words_in_the_conversation_cannot_approve_anything</code> fail, because the edit now runs without asking. Put it back.</p>
+<p>Ask yourself: <code>words_in_the_conversation_cannot_approve_anything</code> passes as long as the approver is wired to the keyboard. What change to the harness would make it fail?</p></div>
+
+<div class="reading"><h4>Read a real agent</h4>
+<p>Pi's <a href="https://github.com/badlogic/pi-mono/blob/c596d09d9cef6fdf0db2dd08f3eec8582b7fe8ba/packages/agent/src/agent-loop.ts#L662"><code>prepareToolCall</code></a> (TypeScript) finds the tool, validates its arguments, then calls a <code>beforeToolCall</code> hook that can block the call, and turns a block into an error result, just like yours. Codex's <a href="https://github.com/openai/codex/blob/5ee2bdf1e0e04064bc427ae31a49a01e8f7064df/codex-rs/core/src/tools/orchestrator.rs#L122"><code>ToolOrchestrator::run</code></a> (Rust) starts with a comment, <code>// 1) Approval</code>, and decides per tool whether approval is needed. Notice that Pi validates the arguments <em>before</em> asking, while ours asks first and lets <code>edit_file</code> validate afterward, so you might approve a call that then fails anyway. Which order would you rather have?</p></div>
+
+<!-- ============================== CHAPTER 2 ============================== -->
+<h2 id="ch2">2. A run log</h2>
+<p>The conversation is written <em>for Claude</em>. You need a different record, one written for you, of what the harness actually did. The conversation can't give you that. A denied edit and an edit that ran and failed both end up as an error <code>tool_result</code>, but one of them touched your disk and the other didn't. When something goes wrong, that's the first thing you'll want to know.</p>
+<p>So the agent keeps a log of <em>events</em>, typed values that say what happened: the model was asked, a tool started, a tool finished, a call was refused, a limit was reached. Rejected calls are recorded as such, so “started” always means a tool really ran.</p>
+
+<h3>Specification</h3>
+<ul>
+<li>Add <code>enum Event</code> with the variants <code>ModelRequested { round: usize }</code>, <code>ToolStarted { id: String, name: String }</code>, <code>ToolFinished { id: String, is_error: bool }</code>, <code>ToolRejected { id: String, name: String, reason: String }</code>, and <code>LimitReached { limit: Limit }</code>. Add <code>enum Limit</code> with one variant, <code>Rounds</code>. It grows in chapter 4. Both derive <code>Debug, Clone, PartialEq</code>, and <code>Limit</code> is also <code>Copy</code>.</li>
+<li><code>Agent</code> gets <code>log: Vec&lt;Event&gt;</code>, which starts empty.</li>
+<li><code>respond</code> records <code>ModelRequested { round }</code> before every model call, with rounds counted from 1 within each turn, and <code>LimitReached { limit: Limit::Rounds }</code> when the round limit stops it.</li>
+<li><code>execute_tool</code> records <code>ToolRejected</code> with reason <code>"unknown tool"</code> or <code>"denied by the user"</code>, or else <code>ToolStarted</code> just before the tool runs and <code>ToolFinished</code> just after.</li>
+</ul>
+
+<aside class="rust"><h4>Rust concept · a vocabulary of events</h4>
+<p>We could log strings like <code>"tool started: read_file"</code>. An enum is better for three reasons. A typo in a variant name doesn't compile, while a typo in a string just silently breaks your search later. Each variant carries exactly the data that kind of event needs. And deriving <code>PartialEq</code> lets a test compare a whole log with <code>assert_eq!</code>, in one line.</p>
+<p>Two small tools appear in the tests. <code>agent.log.contains(&amp;event)</code> needs <code>PartialEq</code> too, and <code>agent.log.last()</code> returns an <code>Option&lt;&amp;Event&gt;</code>, which is <code>None</code> for an empty log. <code>1..=MAX_TOOL_ROUNDS</code> is an <em>inclusive</em> range, from 1 up to and including 10.</p>
+<p class="read">Read: <a href="https://doc.rust-lang.org/book/ch06-01-defining-an-enum.html">§6.1 Defining an enum</a> · <a href="https://doc.rust-lang.org/book/appendix-03-derivable-traits.html#partialeq-and-eq-for-equality-comparisons">Appendix C: PartialEq</a></p></aside>
+
+<h3>Tests</h3>
+<pre><code>    #[test]
+    fn a_tool_call_is_logged_in_order() {
+        let mut agent = agent(vec![
+            vec![tool_use("t1", "read_file", json!({"path": "Cargo.toml"}))],
+            vec![text("It's a Cargo manifest.")],
+        ]);
+        let mut conversation = ask("What's in Cargo.toml?");
+
+        agent.respond(&amp;mut conversation).unwrap();
+
+        assert_eq!(
+            agent.log,
+            vec![
+                Event::ModelRequested { round: 1 },
+                Event::ToolStarted {
+                    id: "t1".to_string(),
+                    name: "read_file".to_string(),
+                },
+                Event::ToolFinished {
+                    id: "t1".to_string(),
+                    is_error: false,
+                },
+                Event::ModelRequested { round: 2 },
+            ]
+        );
+    }
+
+    #[test]
+    fn a_denied_call_never_starts() {
+        let mut agent = agent_with_approval(
+            vec![edit_request("target/log-denied.txt"), vec![text("Done!")]],
+            Box::new(|_, _| false),
+        );
+        let mut conversation = ask("Change old to new.");
+
+        agent.respond(&amp;mut conversation).unwrap();
+
+        assert!(agent.log.contains(&amp;Event::ToolRejected {
+            id: "t1".to_string(),
+            name: "edit_file".to_string(),
+            reason: "denied by the user".to_string(),
+        }));
+        assert!(
+            !agent
+                .log
+                .iter()
+                .any(|event| matches!(event, Event::ToolStarted { .. }))
+        );
+    }
+
+    #[test]
+    fn a_failed_call_did_start() {
+        let mut agent = agent(vec![
+            vec![tool_use("t1", "read_file", json!({"path": "missing.txt"}))],
+            vec![text("That file doesn't exist.")],
+        ]);
+        let mut conversation = ask("Read missing.txt");
+
+        agent.respond(&amp;mut conversation).unwrap();
+
+        assert!(agent.log.contains(&amp;Event::ToolFinished {
+            id: "t1".to_string(),
+            is_error: true,
+        }));
+    }
+
+    #[test]
+    fn the_round_limit_is_logged() {
+        let replies = (0..20)
+            .map(|i| vec![tool_use(&amp;format!("t{i}"), "list_files", json!({}))])
+            .collect();
+        let mut agent = agent(replies);
+        let mut conversation = ask("Keep looking around forever.");
+
+        agent.respond(&amp;mut conversation).unwrap();
+
+        let requests = agent
+            .log
+            .iter()
+            .filter(|event| matches!(event, Event::ModelRequested { .. }))
+            .count();
+        assert_eq!(requests, MAX_TOOL_ROUNDS);
+        assert_eq!(
+            agent.log.last(),
+            Some(&amp;Event::LimitReached {
+                limit: Limit::Rounds
+            })
+        );
+    }</code></pre>
+
+<details class="hints"><summary>Hints</summary>
+<ul>
+<li>Change <code>for _ in 0..MAX_TOOL_ROUNDS</code> to <code>for round in 1..=MAX_TOOL_ROUNDS</code>.</li>
+<li><code>id</code> and <code>name</code> are <code>&amp;str</code> in <code>execute_tool</code>, and the events own <code>String</code>s, so use <code>id.to_string()</code>.</li>
+<li><code>a_failed_call_did_start</code> is the reason <code>ToolStarted</code> comes <em>before</em> the call: a tool that ran and failed still ran.</li>
+</ul></details>
+
+<details class="solution"><summary>Reference solution</summary>
+<pre><code>#[derive(Debug, Clone, PartialEq)]
+enum Event {
+    ModelRequested {
+        round: usize,
+    },
+    ToolStarted {
+        id: String,
+        name: String,
+    },
+    ToolFinished {
+        id: String,
+        is_error: bool,
+    },
+    ToolRejected {
+        id: String,
+        name: String,
+        reason: String,
+    },
+    LimitReached {
+        limit: Limit,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Limit {
+    Rounds,
+}
+
+struct Agent&lt;M: Model&gt; {
+    model: M,
+    tools: Vec&lt;ToolDefinition&gt;,
+    approve: Box&lt;dyn FnMut(&amp;str, &amp;Value) -&gt; bool&gt;,
+    log: Vec&lt;Event&gt;,
+}
+
+    fn respond(&amp;mut self, conversation: &amp;mut Vec&lt;Message&gt;) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+        for round in 1..=MAX_TOOL_ROUNDS {
+            self.log.push(Event::ModelRequested { round });
+            let content = self.model.complete(conversation, &amp;self.tools)?;
+
+            let mut tool_results = Vec::new();
+            for block in &amp;content {
+                match block {
+                    ContentBlock::Text { text } =&gt; println!("\x1b[93mClaude\x1b[0m: {text}"),
+                    ContentBlock::ToolUse { id, name, input } =&gt; {
+                        if already_answered(conversation, &amp;tool_results, id) {
+                            return Err(format!(
+                                "Claude reused tool_use id {id}; refusing to run it twice"
+                            )
+                            .into());
+                        }
+                        tool_results.push(self.execute_tool(id, name, input));
+                    }
+                    ContentBlock::ToolResult { .. } =&gt; {}
+                }
+            }
+            conversation.push(Message {
+                role: Role::Assistant,
+                content,
+            });
+
+            if tool_results.is_empty() {
+                return Ok(());
+            }
+            conversation.push(Message {
+                role: Role::User,
+                content: tool_results,
+            });
+        }
+
+        self.log.push(Event::LimitReached {
+            limit: Limit::Rounds,
+        });
+        println!("\x1b[91mStopped after {MAX_TOOL_ROUNDS} rounds of tool calls.\x1b[0m");
+        Ok(())
+    }
+
+    fn execute_tool(&amp;mut self, id: &amp;str, name: &amp;str, input: &amp;Value) -&gt; ContentBlock {
+        let Some(tool) = self.tools.iter().find(|tool| tool.name == name) else {
+            self.log.push(Event::ToolRejected {
+                id: id.to_string(),
+                name: name.to_string(),
+                reason: "unknown tool".to_string(),
+            });
+            return ContentBlock::ToolResult {
+                tool_use_id: id.to_string(),
+                content: "tool not found".to_string(),
+                is_error: true,
+            };
+        };
+
+        if tool.needs_approval &amp;&amp; !(self.approve)(name, input) {
+            self.log.push(Event::ToolRejected {
+                id: id.to_string(),
+                name: name.to_string(),
+                reason: "denied by the user".to_string(),
+            });
+            return ContentBlock::ToolResult {
+                tool_use_id: id.to_string(),
+                content: format!("the user did not allow this {name} call"),
+                is_error: true,
+            };
+        }
+
+        println!("\x1b[92mtool\x1b[0m: {name}({input})");
+        self.log.push(Event::ToolStarted {
+            id: id.to_string(),
+            name: name.to_string(),
+        });
+        let (content, is_error) = match (tool.function)(input.clone()) {
+            Ok(output) =&gt; (output, false),
+            Err(err) =&gt; (err.to_string(), true),
+        };
+        self.log.push(Event::ToolFinished {
+            id: id.to_string(),
+            is_error,
+        });
+
+        ContentBlock::ToolResult {
+            tool_use_id: id.to_string(),
+            content,
+            is_error,
+        }
+    }</code></pre>
+<p>In <code>Agent::new</code>, add <code>log: Vec::new(),</code>.</p></details>
+
+<p class="done"><strong>Done when</strong> all 12 tests pass.</p>
+
+<div class="try"><h4>Break it on purpose</h4>
+<p>Move the <code>ToolStarted</code> push up so it happens <em>before</em> the approval check. Predict the failures. <code>a_denied_call_never_starts</code> fails, and so does <code>a_tool_call_is_logged_in_order</code>, because now a tool that never ran shows up as started. Put it back.</p></div>
+
+<div class="reading"><h4>Read a real agent</h4>
+<p>Pi's <a href="https://github.com/badlogic/pi-mono/blob/c596d09d9cef6fdf0db2dd08f3eec8582b7fe8ba/packages/agent/src/agent-loop.ts#L434"><code>failToolCallsFromTruncatedMessage</code></a> handles calls it refuses to run. Read what it emits: a <code>tool_execution_start</code> event and then an end event with an error, even though nothing executed. That's a different rule from ours, where <code>ToolStarted</code> means the tool really ran. Neither is wrong, but you need to know which rule your log follows before you trust it.</p></div>
+
+<!-- ============================== CHAPTER 3 ============================== -->
+<h2 id="ch3">3. Save a session, replay without acting</h2>
+<p>When the program exits, the conversation and the log disappear. In this chapter we save them as a JSON file, and add a <code>--replay</code> mode that reads one back and shows what happened.</p>
+<p>Replay has one hard rule: <strong>it never calls Claude and never runs a tool.</strong> A saved <code>tool_use</code> is a record of what happened, not an instruction to do it again. If replaying a session re-ran its edits, opening yesterday's log could change today's files. We'll make that impossible by design, not by being careful: <code>replay</code> takes only the saved session, so it has no model and no tools to call.</p>
+<p>Loading a file also deserves suspicion. The file might be truncated, edited by hand, or written by a newer version of the program. serde checks that the JSON has the right shape. We then check that the history makes sense: every <code>tool_use</code> answered exactly once, and no ID used twice.</p>
+
+<h3>Specification</h3>
+<ul>
+<li>Derive <code>Serialize, Deserialize, Clone, PartialEq</code> on <code>Role</code>, <code>Message</code> and <code>ContentBlock</code>. Derive <code>Serialize, Deserialize</code> on <code>Event</code>, with <code>#[serde(tag = "event", rename_all = "snake_case")]</code>, and on <code>Limit</code>, with <code>#[serde(rename_all = "snake_case")]</code>.</li>
+<li>Add <code>struct Session { version: u32, conversation: Vec&lt;Message&gt;, log: Vec&lt;Event&gt; }</code> with <code>#[serde(deny_unknown_fields)]</code>, and the constants <code>SESSION_VERSION = 1</code> and <code>MAX_SESSION_BYTES = 1024 * 1024</code>.</li>
+<li><code>save_session(path: &amp;Path, session: &amp;Session)</code> writes pretty JSON and refuses to overwrite an existing file.</li>
+<li><code>load_session(path: &amp;Path) -&gt; Result&lt;Session, ...&gt;</code> reads at most 1 MiB and rejects anything bigger, then parses the JSON and validates it.</li>
+<li><code>validate_session</code> rejects any version other than 1, a <code>tool_use</code> ID that appears twice, a <code>tool_result</code> that doesn't answer an earlier unanswered <code>tool_use</code>, and any <code>tool_use</code> left unanswered at the end.</li>
+<li><code>replay(session: &amp;Session) -&gt; String</code> renders one line per block: <samp>You: …</samp>, <samp>Claude: …</samp>, <samp>tool: name(input)</samp>, and then <samp>  -&gt; ok, N bytes</samp> or <samp>  -&gt; error: …</samp>.</li>
+<li><code>run</code> returns the conversation when you press <kbd>Ctrl-D</kbd>. <code>main</code> then saves the session to <code>sessions/session-&lt;unix seconds&gt;.json</code>, and <code>cargo run -- --replay &lt;path&gt;</code> prints a saved session and exits.</li>
+</ul>
+
+<aside class="rust"><h4>Rust concept · files that refuse, bounded reads, and slice patterns</h4>
+<p><code>OpenOptions::new().write(true).create_new(true).open(path)</code> asks the operating system to create the file <em>only if it doesn't exist</em>, in one step. Checking <code>path.exists()</code> first and then creating the file would leave a gap where another process could create it in between. <code>File::open(path)?.take(MAX_SESSION_BYTES + 1)</code> wraps the file in a reader that stops after that many bytes. We read one byte more than the limit so we can tell “exactly 1 MiB” from “more than 1 MiB.”</p>
+<p><code>use std::fmt::Write as _;</code> brings a trait into scope without giving it a name. We need its <code>write_fmt</code> method so <code>writeln!(out, ...)</code> works on a <code>String</code>, but the name <code>Write</code> is already taken by <code>std::io::Write</code>. Writing to a <code>String</code> can't fail, which is why <code>.unwrap()</code> is honest here.</p>
+<p><code>if let [_, flag, path] = args.as_slice() &amp;&amp; flag == "--replay"</code> matches a slice against a pattern: exactly three elements, ignore the first, bind the other two. It's combined with a condition using a <em>let chain</em>, which needs edition 2024.</p>
+<p class="read">Read: <a href="https://doc.rust-lang.org/std/fs/struct.OpenOptions.html#method.create_new">OpenOptions::create_new</a> · <a href="https://doc.rust-lang.org/std/io/trait.Read.html#method.take">Read::take</a> · <a href="https://doc.rust-lang.org/book/ch12-01-accepting-command-line-arguments.html">§12.1 Command line arguments</a> · <a href="https://doc.rust-lang.org/book/ch19-03-pattern-syntax.html#destructuring-to-break-apart-values">§19.3 Destructuring</a> · <a href="https://serde.rs/container-attrs.html#deny_unknown_fields">serde: deny_unknown_fields</a></p></aside>
+
+<h3>Tests</h3>
+<pre><code>    fn finished_session() -&gt; Session {
+        let mut agent = agent(vec![
+            vec![tool_use("t1", "read_file", json!({"path": "Cargo.toml"}))],
+            vec![text("It's a Cargo manifest.")],
+        ]);
+        let mut conversation = ask("What's in Cargo.toml?");
+        agent.respond(&amp;mut conversation).unwrap();
+        Session {
+            version: SESSION_VERSION,
+            conversation,
+            log: agent.log,
+        }
+    }
+
+    fn fresh_path(name: &amp;str) -&gt; &amp;str {
+        let _ = fs::remove_file(name);
+        name
+    }
+
+    #[test]
+    fn a_session_survives_a_round_trip() {
+        let path = Path::new(fresh_path("target/session-round-trip.json"));
+        let session = finished_session();
+
+        save_session(path, &amp;session).unwrap();
+        let loaded = load_session(path).unwrap();
+
+        assert_eq!(loaded, session);
+    }
+
+    #[test]
+    fn saving_never_overwrites_a_session() {
+        let path = Path::new(fresh_path("target/session-no-overwrite.json"));
+        save_session(path, &amp;finished_session()).unwrap();
+        let before = fs::read_to_string(path).unwrap();
+
+        let second = save_session(path, &amp;finished_session());
+
+        assert!(second.is_err());
+        assert_eq!(fs::read_to_string(path).unwrap(), before);
+    }
+
+    #[test]
+    fn a_broken_history_is_rejected() {
+        let mut unanswered = finished_session();
+        unanswered.conversation.remove(2);
+        assert!(
+            validate_session(&amp;unanswered)
+                .unwrap_err()
+                .to_string()
+                .contains("never answered")
+        );
+
+        let mut future = finished_session();
+        future.version = 2;
+        assert!(validate_session(&amp;future).is_err());
+
+        let mut json = serde_json::to_value(finished_session()).unwrap();
+        json["surprise"] = json!(true);
+        assert!(serde_json::from_value::&lt;Session&gt;(json).is_err());
+    }
+
+    #[test]
+    fn replay_shows_what_happened_without_doing_it_again() {
+        let path = "target/replay-must-not-create.txt";
+        let _ = fs::remove_file(path);
+        let session = Session {
+            version: SESSION_VERSION,
+            conversation: vec![
+                ask("Create a file.").remove(0),
+                Message {
+                    role: Role::Assistant,
+                    content: vec![tool_use(
+                        "t1",
+                        "edit_file",
+                        json!({"path": path, "old_str": "", "new_str": "hi"}),
+                    )],
+                },
+                Message {
+                    role: Role::User,
+                    content: vec![ContentBlock::ToolResult {
+                        tool_use_id: "t1".to_string(),
+                        content: format!("Successfully created file {path}"),
+                        is_error: false,
+                    }],
+                },
+            ],
+            log: Vec::new(),
+        };
+
+        let transcript = replay(&amp;session);
+
+        assert!(transcript.contains("tool: edit_file("));
+        assert!(transcript.contains("  -&gt; ok"));
+        assert!(!Path::new(path).exists());
+    }</code></pre>
+
+<details class="hints"><summary>Hints</summary>
+<ul>
+<li>In <code>validate_session</code>, keep a <code>HashSet</code> of every ID you've seen and a <code>Vec</code> of IDs still waiting for an answer. <code>HashSet::insert</code> returns <code>false</code> if the value was already there.</li>
+<li>For <code>replay</code>, match on a tuple, <code>match (&amp;message.role, block)</code>, so <code>Text</code> can print as <samp>You:</samp> or <samp>Claude:</samp> depending on who said it.</li>
+<li>To make <code>run</code> return the conversation, change its return type to <code>Result&lt;Vec&lt;Message&gt;, Box&lt;dyn Error&gt;&gt;</code> and its last line to <code>Ok(conversation)</code>.</li>
+</ul></details>
+
+<details class="solution"><summary>Reference solution</summary>
+<p>New imports and constants:</p>
+<pre><code>use std::collections::HashSet;
+use std::error::Error;
+use std::fmt::Write as _;
+use std::fs::{self, File, OpenOptions};
+use std::io::{self, Read, Write};
+use std::path::{Component, Path};
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use serde::{Deserialize, Serialize};
+use serde_json::{Value, json};
+
+const MODEL: &amp;str = "claude-haiku-4-5";
+const API_URL: &amp;str = "https://api.anthropic.com/v1/messages";
+const MAX_TOOL_ROUNDS: usize = 10;
+const SESSION_VERSION: u32 = 1;
+const MAX_SESSION_BYTES: u64 = 1024 * 1024;</code></pre>
+<pre><code>fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let args: Vec&lt;String&gt; = std::env::args().collect();
+    if let [_, flag, path] = args.as_slice()
+        &amp;&amp; flag == "--replay"
+    {
+        let session = load_session(Path::new(path))?;
+        print!("{}", replay(&amp;session));
+        return Ok(());
+    }
+
+    let api_key = std::env::var("ANTHROPIC_API_KEY").expect("ANTHROPIC_API_KEY must be set");
+    let tools = vec![read_file_tool(), list_files_tool(), edit_file_tool()];
+    let mut agent = Agent::new(Claude { api_key }, tools, Box::new(ask_user));
+    let conversation = agent.run()?;
+
+    let session = Session {
+        version: SESSION_VERSION,
+        conversation,
+        log: agent.log,
+    };
+    fs::create_dir_all("sessions")?;
+    let seconds = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+    let path = format!("sessions/session-{seconds}.json");
+    save_session(Path::new(&amp;path), &amp;session)?;
+    println!("Saved this session to {path}. Replay it with: cargo run -- --replay {path}");
+    Ok(())
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[serde(deny_unknown_fields)]
+struct Session {
+    version: u32,
+    conversation: Vec&lt;Message&gt;,
+    log: Vec&lt;Event&gt;,
+}
+
+fn save_session(path: &amp;Path, session: &amp;Session) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let json = serde_json::to_string_pretty(session)?;
+    let mut file = OpenOptions::new().write(true).create_new(true).open(path)?;
+    file.write_all(json.as_bytes())?;
+    Ok(())
+}
+
+fn load_session(path: &amp;Path) -&gt; Result&lt;Session, Box&lt;dyn Error&gt;&gt; {
+    let mut text = String::new();
+    File::open(path)?
+        .take(MAX_SESSION_BYTES + 1)
+        .read_to_string(&amp;mut text)?;
+    if text.len() as u64 &gt; MAX_SESSION_BYTES {
+        return Err("the session file is larger than 1 MiB".into());
+    }
+    let session: Session = serde_json::from_str(&amp;text)?;
+    validate_session(&amp;session)?;
+    Ok(session)
+}
+
+fn validate_session(session: &amp;Session) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    if session.version != SESSION_VERSION {
+        return Err(format!("unsupported session version {}", session.version).into());
+    }
+
+    let mut seen = HashSet::new();
+    let mut unanswered: Vec&lt;&amp;str&gt; = Vec::new();
+    for message in &amp;session.conversation {
+        for block in &amp;message.content {
+            match block {
+                ContentBlock::Text { .. } =&gt; {}
+                ContentBlock::ToolUse { id, .. } =&gt; {
+                    if !seen.insert(id.as_str()) {
+                        return Err(format!("tool_use id {id} appears twice").into());
+                    }
+                    unanswered.push(id);
+                }
+                ContentBlock::ToolResult { tool_use_id, .. } =&gt; {
+                    let Some(index) = unanswered.iter().position(|id| id == tool_use_id) else {
+                        return Err(format!(
+                            "tool_result {tool_use_id} answers no earlier tool_use"
+                        )
+                        .into());
+                    };
+                    unanswered.remove(index);
+                }
+            }
+        }
+    }
+    if let Some(id) = unanswered.first() {
+        return Err(format!("tool_use {id} was never answered").into());
+    }
+    Ok(())
+}
+
+fn replay(session: &amp;Session) -&gt; String {
+    let mut out = String::new();
+    for message in &amp;session.conversation {
+        for block in &amp;message.content {
+            match (&amp;message.role, block) {
+                (Role::User, ContentBlock::Text { text }) =&gt; writeln!(out, "You: {text}").unwrap(),
+                (Role::Assistant, ContentBlock::Text { text }) =&gt; {
+                    writeln!(out, "Claude: {text}").unwrap()
+                }
+                (_, ContentBlock::ToolUse { name, input, .. }) =&gt; {
+                    writeln!(out, "tool: {name}({input})").unwrap()
+                }
+                (
+                    _,
+                    ContentBlock::ToolResult {
+                        content, is_error, ..
+                    },
+                ) =&gt; {
+                    if *is_error {
+                        writeln!(out, "  -&gt; error: {content}").unwrap()
+                    } else {
+                        writeln!(out, "  -&gt; ok, {} bytes", content.len()).unwrap()
+                    }
+                }
+            }
+        }
+    }
+    out
+}</code></pre></details>
+
+<p class="done"><strong>Done when</strong> all 16 tests pass. Then chat with the real agent, press <kbd>Ctrl-D</kbd>, and replay the session it saved. Add <code>sessions/</code> to <code>.gitignore</code>. Only a clean exit saves: <kbd>Ctrl-C</kbd> kills the process before <code>main</code> gets the chance.</p>
+
+<div class="try"><h4>Break it on purpose</h4>
+<p>In <code>save_session</code>, replace <code>.create_new(true)</code> with <code>.create(true).truncate(true)</code>, which means “create or replace.” <code>saving_never_overwrites_a_session</code> fails. Put it back.</p>
+<p>Ask yourself: what would you have to change in <code>replay</code>'s signature before it <em>could</em> run a tool? That's the guarantee its signature gives you.</p></div>
+
+<div class="reading"><h4>Read a real agent</h4>
+<p>Pi's sessions are built from entries with <a href="https://github.com/badlogic/pi-mono/blob/c596d09d9cef6fdf0db2dd08f3eec8582b7fe8ba/packages/coding-agent/src/core/session-manager.ts#L53">an <code>id</code> and a <code>parentId</code></a>, so a session is a tree. You can go back to an earlier point and branch from it. <a href="https://github.com/badlogic/pi-mono/blob/c596d09d9cef6fdf0db2dd08f3eec8582b7fe8ba/packages/coding-agent/src/core/session-manager.ts#L484"><code>buildSessionContext</code></a> walks from one entry back to the root to rebuild that branch's conversation. Ours is a flat list. What would replay need to know to show a tree?</p></div>
+
+<!-- ============================== CHAPTER 4 ============================== -->
+<h2 id="ch4">4. Spending limits</h2>
+<p>Every round sends the <em>whole</em> conversation again, so costs grow faster than you'd expect. If Claude reads a 5,000-token file and then takes six more rounds, those 5,000 tokens are paid for seven times. The ten-round limit from part 1 doesn't capture that: ten rounds of small requests are cheap, while ten rounds after reading a few large files are not.</p>
+<p>So we add two more limits: a <strong>token budget</strong> for the whole session, counted from the <code>usage</code> the API reports, and a <strong>deadline</strong> for each turn. Like the round limit, they're checked between steps. A check can stop the next request, but it can't interrupt a request or a tool that's already running. And tokens are the closest thing to money we can count without knowing your prices. Check the <a href="https://platform.claude.com/docs/en/about-claude/pricing">pricing page</a> for the model you use.</p>
+
+<h3>Specification</h3>
+<ul>
+<li><code>Response</code> gets <code>#[serde(default)] usage: Usage</code>. <code>struct Usage { input_tokens: u64, output_tokens: u64 }</code> derives <code>Default</code> and is marked <code>#[serde(default)]</code>, so missing numbers count as 0.</li>
+<li><code>Model::complete</code> returns the whole <code>Response</code> instead of just its content. The test fake's replies each report 100 input and 50 output tokens.</li>
+<li>Replace <code>MAX_TOOL_ROUNDS</code> with <code>struct Limits { max_rounds: usize, max_tokens: u64, deadline: Option&lt;Duration&gt; }</code>, which defaults to 10 rounds, 500,000 tokens and 300 seconds. <code>Agent</code> gets <code>limits: Limits</code> (the default) and <code>tokens_used: u64</code>, counted across the whole session.</li>
+<li>Before each model call, <code>respond</code> stops if <code>tokens_used</code> has reached <code>max_tokens</code>, or if the deadline has passed since this turn started. After each call, it adds the input and output tokens. A new <code>stop(limit)</code> method logs <code>LimitReached</code> and prints why, and <code>Limit</code> gains <code>Tokens</code> and <code>Deadline</code>.</li>
+<li>Earlier tests that used <code>MAX_TOOL_ROUNDS</code> use <code>Limits::default().max_rounds</code> instead.</li>
+</ul>
+
+<details class="warmup"><summary><span class="warm-tag">Warm-up</span> Defaults, with one change</summary>
+<p>What does this print?</p>
+<pre><code>#[derive(Debug)]
+struct Limits {
+    rounds: usize,
+    tokens: u64,
+}
+
+impl Default for Limits {
+    fn default() -&gt; Limits {
+        Limits {
+            rounds: 10,
+            tokens: 500_000,
+        }
+    }
+}
+
+fn main() {
+    let strict = Limits {
+        tokens: 100,
+        ..Limits::default()
+    };
+    println!("{strict:?}");
+}</code></pre>
+<p class="warm-run"><a href="https://play.rust-lang.org/?version=stable&amp;mode=debug&amp;edition=2024&amp;code=%23%5Bderive%28Debug%29%5D%0Astruct%20Limits%20%7B%0A%20%20%20%20rounds%3A%20usize%2C%0A%20%20%20%20tokens%3A%20u64%2C%0A%7D%0A%0Aimpl%20Default%20for%20Limits%20%7B%0A%20%20%20%20fn%20default%28%29%20-%3E%20Limits%20%7B%0A%20%20%20%20%20%20%20%20Limits%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20rounds%3A%2010%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20tokens%3A%20500_000%2C%0A%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%7D%0A%7D%0A%0Afn%20main%28%29%20%7B%0A%20%20%20%20let%20strict%20%3D%20Limits%20%7B%0A%20%20%20%20%20%20%20%20tokens%3A%20100%2C%0A%20%20%20%20%20%20%20%20..Limits%3A%3Adefault%28%29%0A%20%20%20%20%7D%3B%0A%20%20%20%20println%21%28%22%7Bstrict%3A%3F%7D%22%29%3B%0A%7D%0A">Run it in the Rust Playground</a>, but write down your prediction first.</p>
+<details class="answer"><summary>Show the answer</summary>
+<p><samp>Limits { rounds: 10, tokens: 100 }</samp></p>
+<p><code>..Limits::default()</code> is <em>struct update syntax</em>. The fields you list win, and every other field comes from the value after <code>..</code>, which must come last. The tests in this chapter use it to change one limit at a time and leave the rest at their defaults.</p>
+<p class="read">Read: <a href="https://doc.rust-lang.org/book/ch05-01-defining-structs.html#creating-instances-from-other-instances-with-struct-update-syntax">§5.1 Struct update syntax</a> · <a href="https://doc.rust-lang.org/book/appendix-03-derivable-traits.html#default-for-default-values">Appendix C: Default</a></p></details>
+</details>
+
+<aside class="rust"><h4>Rust concept · Default, clocks, and changing a trait</h4>
+<p><code>impl Default for Limits</code> gives the type a standard “sensible starting value.” <code>#[derive(Default)]</code> on <code>Usage</code> does the same automatically: every field becomes its own default, which is 0 for numbers.</p>
+<p><code>deadline: Option&lt;Duration&gt;</code> keeps two ideas apart: <code>None</code> means “no deadline,” and <code>Some(Duration::ZERO)</code> means “already expired.” <code>Instant::now()</code> reads a <em>monotonic</em> clock, which only moves forward, even if someone changes the system time. <code>started.elapsed()</code> tells you how much time has passed since.</p>
+<p>Changing <code>Model::complete</code>'s return type is a breaking change to a trait. The compiler then lists every implementation that no longer matches, <code>Claude</code> and <code>FakeModel</code>, with error E0053. That's the deal traits give you: one contract, checked everywhere at once.</p>
+<p class="read">Read: <a href="https://doc.rust-lang.org/std/default/trait.Default.html">std Default</a> · <a href="https://doc.rust-lang.org/std/time/struct.Instant.html">std Instant</a> · <a href="https://doc.rust-lang.org/book/ch10-02-traits.html">§10.2 Traits</a></p></aside>
+
+<h3>Tests</h3>
+<p>First update the fake model so it returns whole responses with token counts:</p>
+<pre><code>    struct FakeModel {
+        replies: VecDeque&lt;Response&gt;,
+        calls: usize,
+    }
+
+    impl FakeModel {
+        fn new(replies: Vec&lt;Vec&lt;ContentBlock&gt;&gt;) -&gt; FakeModel {
+            FakeModel {
+                replies: replies.into_iter().map(reply).collect(),
+                calls: 0,
+            }
+        }
+    }
+
+    fn reply(content: Vec&lt;ContentBlock&gt;) -&gt; Response {
+        Response {
+            content,
+            usage: Usage {
+                input_tokens: 100,
+                output_tokens: 50,
+            },
+        }
+    }
+
+    impl Model for FakeModel {
+        fn complete(
+            &amp;mut self,
+            _conversation: &amp;[Message],
+            _tools: &amp;[ToolDefinition],
+        ) -&gt; Result&lt;Response, Box&lt;dyn Error&gt;&gt; {
+            self.calls += 1;
+            self.replies
+                .pop_front()
+                .ok_or_else(|| "the fake model ran out of replies".into())
+        }
+    }</code></pre>
+<p>Then add:</p>
+<pre><code>    fn endless_tool_calls() -&gt; Vec&lt;Vec&lt;ContentBlock&gt;&gt; {
+        (0..20)
+            .map(|i| vec![tool_use(&amp;format!("t{i}"), "list_files", json!({}))])
+            .collect()
+    }
+
+    #[test]
+    fn the_token_budget_stops_the_agent() {
+        let mut agent = agent(endless_tool_calls());
+        agent.limits = Limits {
+            max_tokens: 400,
+            ..Limits::default()
+        };
+        let mut conversation = ask("Keep looking around forever.");
+
+        agent.respond(&amp;mut conversation).unwrap();
+
+        assert_eq!(agent.model.calls, 3);
+        assert_eq!(agent.tokens_used, 450);
+        assert_eq!(
+            agent.log.last(),
+            Some(&amp;Event::LimitReached {
+                limit: Limit::Tokens
+            })
+        );
+    }
+
+    #[test]
+    fn the_token_budget_spans_the_whole_session() {
+        let mut agent = agent(endless_tool_calls());
+        agent.limits = Limits {
+            max_tokens: 400,
+            ..Limits::default()
+        };
+        let mut conversation = ask("Look around.");
+        agent.respond(&amp;mut conversation).unwrap();
+        let calls_before = agent.model.calls;
+
+        conversation.push(ask("Look again.").remove(0));
+        agent.respond(&amp;mut conversation).unwrap();
+
+        assert_eq!(agent.model.calls, calls_before);
+    }
+
+    #[test]
+    fn an_expired_deadline_stops_before_any_request() {
+        let mut agent = agent(endless_tool_calls());
+        agent.limits = Limits {
+            deadline: Some(Duration::ZERO),
+            ..Limits::default()
+        };
+        let mut conversation = ask("Look around.");
+
+        agent.respond(&amp;mut conversation).unwrap();
+
+        assert_eq!(agent.model.calls, 0);
+        assert_eq!(
+            agent.log,
+            vec![Event::LimitReached {
+                limit: Limit::Deadline
+            }]
+        );
+    }</code></pre>
+
+<details class="hints"><summary>Hints</summary>
+<ul>
+<li>Start the clock once, at the top of <code>respond</code>, not inside the loop. The deadline is for the whole turn.</li>
+<li><code>if let Some(deadline) = self.limits.deadline &amp;&amp; started.elapsed() &gt;= deadline</code> is a let chain: it only reads the clock when there is a deadline.</li>
+<li>Why does <code>the_token_budget_stops_the_agent</code> expect exactly 3 calls? Before each call the agent has used 0, 150 and 300 tokens, all under 400, and before the fourth it has used 450.</li>
+</ul></details>
+
+<details class="solution"><summary>Reference solution</summary>
+<pre><code>trait Model {
+    fn complete(
+        &amp;mut self,
+        conversation: &amp;[Message],
+        tools: &amp;[ToolDefinition],
+    ) -&gt; Result&lt;Response, Box&lt;dyn Error&gt;&gt;;
+}
+
+impl Model for Claude {
+    fn complete(
+        &amp;mut self,
+        conversation: &amp;[Message],
+        tools: &amp;[ToolDefinition],
+    ) -&gt; Result&lt;Response, Box&lt;dyn Error&gt;&gt; {
+        let body = json!({
+            "model": MODEL,
+            "max_tokens": 4096,
+            "messages": conversation,
+            "tools": tools,
+        });
+
+        let response: Response = ureq::post(API_URL)
+            .header("x-api-key", &amp;self.api_key)
+            .header("anthropic-version", "2023-06-01")
+            .send_json(&amp;body)?
+            .body_mut()
+            .read_json()?;
+
+        Ok(response)
+    }
+}
+
+struct Agent&lt;M: Model&gt; {
+    model: M,
+    tools: Vec&lt;ToolDefinition&gt;,
+    approve: Box&lt;dyn FnMut(&amp;str, &amp;Value) -&gt; bool&gt;,
+    log: Vec&lt;Event&gt;,
+    limits: Limits,
+    tokens_used: u64,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct Limits {
+    max_rounds: usize,
+    max_tokens: u64,
+    deadline: Option&lt;Duration&gt;,
+}
+
+impl Default for Limits {
+    fn default() -&gt; Limits {
+        Limits {
+            max_rounds: 10,
+            max_tokens: 500_000,
+            deadline: Some(Duration::from_secs(300)),
+        }
+    }
+}
+
+    fn respond(&amp;mut self, conversation: &amp;mut Vec&lt;Message&gt;) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+        let started = Instant::now();
+        for round in 1..=self.limits.max_rounds {
+            if self.tokens_used &gt;= self.limits.max_tokens {
+                self.stop(Limit::Tokens);
+                return Ok(());
+            }
+            if let Some(deadline) = self.limits.deadline
+                &amp;&amp; started.elapsed() &gt;= deadline
+            {
+                self.stop(Limit::Deadline);
+                return Ok(());
+            }
+
+            self.log.push(Event::ModelRequested { round });
+            let response = self.model.complete(conversation, &amp;self.tools)?;
+            self.tokens_used += response.usage.input_tokens + response.usage.output_tokens;
+            let content = response.content;
+
+            let mut tool_results = Vec::new();
+            for block in &amp;content {
+                match block {
+                    ContentBlock::Text { text } =&gt; println!("\x1b[93mClaude\x1b[0m: {text}"),
+                    ContentBlock::ToolUse { id, name, input } =&gt; {
+                        if already_answered(conversation, &amp;tool_results, id) {
+                            return Err(format!(
+                                "Claude reused tool_use id {id}; refusing to run it twice"
+                            )
+                            .into());
+                        }
+                        tool_results.push(self.execute_tool(id, name, input));
+                    }
+                    ContentBlock::ToolResult { .. } =&gt; {}
+                }
+            }
+            conversation.push(Message {
+                role: Role::Assistant,
+                content,
+            });
+
+            if tool_results.is_empty() {
+                return Ok(());
+            }
+            conversation.push(Message {
+                role: Role::User,
+                content: tool_results,
+            });
+        }
+
+        self.stop(Limit::Rounds);
+        Ok(())
+    }
+
+    fn stop(&amp;mut self, limit: Limit) {
+        self.log.push(Event::LimitReached { limit });
+        let reason = match limit {
+            Limit::Rounds =&gt; format!("{} rounds of tool calls", self.limits.max_rounds),
+            Limit::Tokens =&gt; format!("the budget of {} tokens", self.limits.max_tokens),
+            Limit::Deadline =&gt; "the time limit for one turn".to_string(),
+        };
+        println!("\x1b[91mStopped: reached {reason}.\x1b[0m");
+    }
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
+#[serde(rename_all = "snake_case")]
+enum Limit {
+    Rounds,
+    Tokens,
+    Deadline,
+}
+
+#[derive(Deserialize, Debug)]
+struct Response {
+    content: Vec&lt;ContentBlock&gt;,
+    #[serde(default)]
+    usage: Usage,
+}
+
+#[derive(Deserialize, Debug, Default, Clone, Copy, PartialEq)]
+#[serde(default)]
+struct Usage {
+    input_tokens: u64,
+    output_tokens: u64,
+}</code></pre>
+<p>In <code>Agent::new</code>, add <code>limits: Limits::default(),</code> and <code>tokens_used: 0,</code>.</p></details>
+
+<p class="done"><strong>Done when</strong> all 19 tests pass.</p>
+
+<div class="try"><h4>Break it on purpose</h4>
+<ol>
+<li>Remove <code>Default</code> from <code>Usage</code>'s derive list and run <code>cargo build</code>. Expect <code>error[E0277]: the trait bound `Usage: std::default::Default` is not satisfied</code>. <code>#[serde(default)]</code> promises serde a default value, and Rust holds you to it. Put it back.</li>
+<li>Delete the line that adds to <code>tokens_used</code>. Both token tests fail, because the budget is never reached. Put it back.</li>
+</ol>
+<p>Ask yourself: pressing <kbd>Ctrl-C</kbd> still kills the agent instantly, without saving. The standard library has no portable way to catch it, but the <a href="https://crates.io/crates/ctrlc"><code>ctrlc</code></a> crate does. How would you use it with an <code>AtomicBool</code> to add a fourth limit, “the user asked to stop”?</p></div>
+
+<div class="reading"><h4>Read a real agent</h4>
+<p>Pi's <a href="https://github.com/badlogic/pi-mono/blob/c596d09d9cef6fdf0db2dd08f3eec8582b7fe8ba/packages/agent/src/agent-loop.ts#L662"><code>prepareToolCall</code></a> checks <code>signal?.aborted</code> after the approval hook and again just before handing the call over to run. That's the same “check between steps” idea as our limits, applied to cancellation, and it has the same weakness: a step that's already running isn't interrupted.</p></div>
+
+<!-- ============================== CHAPTER 5 ============================== -->
+<h2 id="ch5">5. History that outgrows the window</h2>
+<p>A model can only read so much at once, its <em>context window</em>. A long enough session will eventually produce a request that's too big. The obvious fix, dropping the oldest messages, breaks things in two ways. A <code>tool_result</code> whose <code>tool_use</code> was dropped is invalid, and the API rejects it. And cutting into the middle of a turn keeps the answers but loses the question they answer.</p>
+<p>So we follow three rules. Drop <strong>whole turns</strong>, oldest first. <strong>Always keep the latest turn</strong>, because that's the work in progress. And <strong>never edit the saved conversation</strong>: we only choose what to <em>send</em>. The full record stays intact for the log, the session file and replay.</p>
+<p>A turn starts at a user message that contains no tool results, in other words a real question from you.</p>
+
+<h3>Specification</h3>
+<ul>
+<li><code>fn starts_a_turn(message: &amp;Message) -&gt; bool</code> returns true for a user message with no <code>ToolResult</code> blocks.</li>
+<li><code>fn select_context(conversation: &amp;[Message], max_messages: usize) -&gt; &amp;[Message]</code> returns the conversation from the earliest turn start whose remainder fits in <code>max_messages</code>. If even the latest turn doesn't fit, it returns the latest turn anyway. If there's no turn start at all, it returns everything.</li>
+<li><code>Limits</code> gets <code>max_context_messages: usize</code>, 200 by default, and <code>respond</code> sends <code>select_context(...)</code> instead of the whole conversation.</li>
+<li>The fake model records every request it receives in <code>requests: Vec&lt;Vec&lt;Message&gt;&gt;</code>.</li>
+</ul>
+<p>Counting messages is a stand-in. The real limit is measured in tokens, and one message can hold a huge file. Once this works, try trimming by tokens instead: the <code>usage.input_tokens</code> of the last response tells you how big the last request was.</p>
+
+<details class="warmup"><summary><span class="warm-tag">Warm-up</span> Searching from the end</summary>
+<p>What two lines does this print?</p>
+<pre><code>fn main() {
+    let words = ["see", "Spot", "run", "Run", "fast"];
+    let last = words.iter().rposition(|word| word.starts_with('R'));
+    println!("{last:?}");
+    if let Some(i) = last {
+        println!("{:?}", &amp;words[i..]);
+    }
+}</code></pre>
+<p class="warm-run"><a href="https://play.rust-lang.org/?version=stable&amp;mode=debug&amp;edition=2024&amp;code=fn%20main%28%29%20%7B%0A%20%20%20%20let%20words%20%3D%20%5B%22see%22%2C%20%22Spot%22%2C%20%22run%22%2C%20%22Run%22%2C%20%22fast%22%5D%3B%0A%20%20%20%20let%20last%20%3D%20words.iter%28%29.rposition%28%7Cword%7C%20word.starts_with%28%27R%27%29%29%3B%0A%20%20%20%20println%21%28%22%7Blast%3A%3F%7D%22%29%3B%0A%20%20%20%20if%20let%20Some%28i%29%20%3D%20last%20%7B%0A%20%20%20%20%20%20%20%20println%21%28%22%7B%3A%3F%7D%22%2C%20%26words%5Bi..%5D%29%3B%0A%20%20%20%20%7D%0A%7D%0A">Run it in the Rust Playground</a>, but write down your prediction first.</p>
+<details class="answer"><summary>Show the answer</summary>
+<p><samp>Some(3)</samp><br><samp>["Run", "fast"]</samp></p>
+<p><code>rposition</code> searches from the back and returns the index of the <em>last</em> match, or <code>None</code> if nothing matches. Lowercase <code>"run"</code> doesn't start with <code>'R'</code>, so the answer is 3, not 2. <code>&amp;words[i..]</code> borrows everything from index <code>i</code> to the end without copying. <code>select_context</code> starts the same way: it finds the latest turn start, then slices.</p>
+<p class="read">Read: <a href="https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.rposition">Iterator::rposition</a> · <a href="https://doc.rust-lang.org/book/ch04-03-slices.html#other-slices">§4.3 Other slices</a></p></details>
+</details>
+
+<aside class="rust"><h4>Rust concept · returning a view into the input</h4>
+<p><code>select_context</code> returns <code>&amp;[Message]</code>, a slice <em>of the conversation it was given</em>. Nothing is copied. By lifetime elision, one reference in and one out, Rust knows the result borrows from <code>conversation</code>. That's also why <code>respond</code> can't push to the conversation while it still holds the selected request: the borrow must end first.</p>
+<p><code>(0..=latest).find(|&amp;i| ...)</code> searches the indexes in order. The closure's parameter <code>|&amp;i|</code> is a pattern: <code>find</code> hands each closure a <em>reference</em> to the item, and <code>&amp;i</code> unpacks it into a plain <code>usize</code>.</p>
+<p class="read">Read: <a href="https://doc.rust-lang.org/book/ch10-03-lifetime-syntax.html#lifetime-elision">§10.3 Lifetime elision</a> · <a href="https://doc.rust-lang.org/book/ch19-01-all-the-places-for-patterns.html#function-parameters">§19.1 Patterns in parameters</a></p></aside>
+
+<h3>Tests</h3>
+<p>Give the fake model a <code>requests: Vec&lt;Vec&lt;Message&gt;&gt;</code> field that <code>complete</code> pushes <code>conversation.to_vec()</code> into. Then add:</p>
+<pre><code>    fn turn(n: usize) -&gt; Vec&lt;Message&gt; {
+        let id = format!("t{n}");
+        vec![
+            ask(&amp;format!("Question {n}")).remove(0),
+            Message {
+                role: Role::Assistant,
+                content: vec![tool_use(&amp;id, "list_files", json!({}))],
+            },
+            Message {
+                role: Role::User,
+                content: vec![ContentBlock::ToolResult {
+                    tool_use_id: id,
+                    content: "[]".to_string(),
+                    is_error: false,
+                }],
+            },
+            Message {
+                role: Role::Assistant,
+                content: vec![text(&amp;format!("Answer {n}"))],
+            },
+        ]
+    }
+
+    fn three_turns() -&gt; Vec&lt;Message&gt; {
+        (1..=3).flat_map(turn).collect()
+    }
+
+    fn pairs_are_complete(messages: &amp;[Message]) -&gt; bool {
+        let blocks: Vec&lt;&amp;ContentBlock&gt; = messages.iter().flat_map(|m| &amp;m.content).collect();
+        let uses: Vec&lt;&amp;String&gt; = blocks
+            .iter()
+            .filter_map(|b| match b {
+                ContentBlock::ToolUse { id, .. } =&gt; Some(id),
+                _ =&gt; None,
+            })
+            .collect();
+        let results: Vec&lt;&amp;String&gt; = blocks
+            .iter()
+            .filter_map(|b| match b {
+                ContentBlock::ToolResult { tool_use_id, .. } =&gt; Some(tool_use_id),
+                _ =&gt; None,
+            })
+            .collect();
+        uses == results
+    }
+
+    #[test]
+    fn old_turns_are_dropped_whole() {
+        let conversation = three_turns();
+
+        let selected = select_context(&amp;conversation, 9);
+
+        assert_eq!(selected, &amp;conversation[4..]);
+    }
+
+    #[test]
+    fn the_latest_turn_is_always_kept() {
+        let conversation = three_turns();
+
+        let selected = select_context(&amp;conversation, 1);
+
+        assert_eq!(selected, &amp;conversation[8..]);
+    }
+
+    #[test]
+    fn tool_calls_keep_their_results_at_every_size() {
+        let conversation = three_turns();
+        for max in 0..=conversation.len() + 1 {
+            let selected = select_context(&amp;conversation, max);
+            assert!(starts_a_turn(&amp;selected[0]), "max = {max}");
+            assert!(pairs_are_complete(selected), "max = {max}");
+        }
+    }
+
+    #[test]
+    fn the_full_history_stays_in_the_conversation() {
+        let mut agent = agent(vec![vec![text("Answer 4")]]);
+        agent.limits = Limits {
+            max_context_messages: 4,
+            ..Limits::default()
+        };
+        let mut conversation = three_turns();
+        conversation.push(ask("Question 4").remove(0));
+
+        agent.respond(&amp;mut conversation).unwrap();
+
+        assert_eq!(agent.model.requests[0].len(), 1);
+        assert_eq!(conversation.len(), 14);
+    }</code></pre>
+<p><code>tool_calls_keep_their_results_at_every_size</code> checks the rule for every possible limit, not just the two you'd think to try. When a rule is cheap to check, checking all the cases beats picking examples.</p>
+
+<details class="hints"><summary>Hints</summary>
+<ul>
+<li>First find the latest turn start with <code>rposition(starts_a_turn)</code>. A function's name works as a closure.</li>
+<li>Then search from the front for the first turn start <code>i</code> where <code>conversation.len() - i &lt;= max_messages</code>, and fall back to the latest.</li>
+</ul></details>
+
+<details class="solution"><summary>Reference solution</summary>
+<pre><code>fn select_context(conversation: &amp;[Message], max_messages: usize) -&gt; &amp;[Message] {
+    let Some(latest) = conversation.iter().rposition(starts_a_turn) else {
+        return conversation;
+    };
+    let start = (0..=latest)
+        .find(|&amp;i| starts_a_turn(&amp;conversation[i]) &amp;&amp; conversation.len() - i &lt;= max_messages)
+        .unwrap_or(latest);
+    &amp;conversation[start..]
+}
+
+fn starts_a_turn(message: &amp;Message) -&gt; bool {
+    message.role == Role::User
+        &amp;&amp; !message
+            .content
+            .iter()
+            .any(|block| matches!(block, ContentBlock::ToolResult { .. }))
+}</code></pre>
+<p>In <code>respond</code>:</p>
+<pre><code>            let request = select_context(conversation, self.limits.max_context_messages);
+            let response = self.model.complete(request, &amp;self.tools)?;</code></pre></details>
+
+<p class="done"><strong>Done when</strong> all 23 tests pass.</p>
+
+<div class="try"><h4>Break it on purpose</h4>
+<p>Make <code>starts_a_turn</code> return just <code>message.role == Role::User</code>, forgetting that tool results come in user messages too. Three tests fail, including <code>tool_calls_keep_their_results_at_every_size</code>, because a selection can now start with a <code>tool_result</code> whose <code>tool_use</code> was cut off. Put it back.</p></div>
+
+<div class="reading"><h4>Read a real agent</h4>
+<p>Codex keeps the same rule a different way. When <a href="https://github.com/openai/codex/blob/5ee2bdf1e0e04064bc427ae31a49a01e8f7064df/codex-rs/core/src/context_manager/history.rs#L543"><code>remove_first_item</code></a> drops the oldest item, it also removes its matching call or output. And <a href="https://github.com/openai/codex/blob/5ee2bdf1e0e04064bc427ae31a49a01e8f7064df/codex-rs/core/src/context_manager/history.rs#L800"><code>normalize_history</code></a> makes sure every call has an output and removes outputs left without a call. We avoid breaking the pairs by choosing whole turns. Codex repairs pairs after the fact. Which is easier to test?</p></div>
+
+<!-- ============================== CHAPTER 6 ============================== -->
+<h2 id="ch6">6. Streaming, and replies that were cut off</h2>
+<p>Waiting for a whole reply feels slow, and streaming shows text as it's written. With <code>"stream": true</code>, the API sends <a href="https://platform.claude.com/docs/en/build-with-claude/streaming">server-sent events</a>: lines like <code>data: {"type":"content_block_delta", ...}</code> that add to the reply piece by piece. Text arrives in fragments, and a tool call's input arrives as fragments of a JSON string.</p>
+<p>That raises a new danger. <strong>A tool call must never run until the reply is complete.</strong> Halfway through, <code>{"path": "src/ma</code> is a different file from the one Claude meant. So the assembler shows text as it arrives but hands back nothing until it sees <code>message_stop</code>. A stream that ends early is an error, never a reply.</p>
+<p>A <em>complete</em> reply can still be cut off. <code>stop_reason: "max_tokens"</code> means Claude ran out of room in the middle of writing, and a tool call at the end may have truncated input. We run nothing from such a reply, and we tell Claude to send the call again.</p>
+
+<h3>Specification</h3>
+<ul>
+<li><code>Response</code> gets <code>#[serde(default)] stop_reason: Option&lt;String&gt;</code>.</li>
+<li>If <code>stop_reason</code> is <code>"max_tokens"</code>, <code>respond</code> runs none of the reply's tool calls. Each one gets an error result: <code>{name} was not run: your response hit max_tokens, so its input may be incomplete. Send the call again with complete input.</code> It's logged as <code>ToolRejected</code> with reason <code>"the response was cut off"</code>.</li>
+<li>Typed events: <code>enum StreamEvent</code>, internally tagged by <code>"type"</code>, with an <code>Unknown</code> variant for event types we don't know, plus <code>StreamStart</code>, <code>StreamStop</code> and <code>enum Delta</code>.</li>
+<li><code>fn assemble(lines: impl Iterator&lt;Item = io::Result&lt;String&gt;&gt;, on_text: &amp;mut dyn FnMut(usize, &amp;str)) -&gt; Result&lt;Response, ...&gt;</code>:
+<ul>
+<li>reads only lines starting with <code>data: </code></li>
+<li>builds blocks in index order and rejects anything out of order</li>
+<li>appends text deltas and passes each one to <code>on_text</code></li>
+<li>collects tool input as a string and parses it at <code>content_block_stop</code></li>
+<li>takes usage from <code>message_start</code> and <code>message_delta</code></li>
+<li>returns only at <code>message_stop</code>, and only if every block was finished</li>
+</ul></li>
+<li><code>Claude::complete</code> sends <code>"stream": true</code>, reads the body line by line with <code>BufReader::lines</code>, and prints text as it arrives. <code>respond</code> no longer prints text itself.</li>
+</ul>
+
+<aside class="rust"><h4>Rust concept · a protocol as types</h4>
+<p>We could read each event as a loose <code>serde_json::Value</code> and pick fields out by name. Typed enums are safer. A misspelled field becomes a parse error instead of a silent <code>null</code>, and <code>match</code> forces us to decide what every event means. The API's <a href="https://platform.claude.com/docs/en/build-with-claude/streaming#other-events">versioning policy</a> says new event types may appear, so <code>#[serde(other)] Unknown</code> catches any <code>"type"</code> we don't know instead of failing.</p>
+<p><code>match (block, delta)</code> matches two values at once. Because <code>block</code> is a <code>&amp;mut ContentBlock</code>, the pattern <code>ContentBlock::Text { text }</code> binds <code>text</code> as a <code>&amp;mut String</code> we can append to directly.</p>
+<p><code>lines: impl Iterator&lt;Item = io::Result&lt;String&gt;&gt;</code> accepts <em>any</em> iterator of lines. <code>Claude</code> passes lines read from the network, and the tests pass lines from a string. It's the same function with no fake needed. The printing closure in <code>Claude::complete</code> captures <code>printing</code> mutably to remember which block it's printing, which is exactly what <code>FnMut</code> allows.</p>
+<p class="read">Read: <a href="https://serde.rs/enum-representations.html#internally-tagged">serde: internally tagged enums</a> · <a href="https://serde.rs/variant-attrs.html#other">serde: other</a> · <a href="https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters">§10.2 Traits as parameters</a> · <a href="https://doc.rust-lang.org/std/io/trait.BufRead.html#method.lines">BufRead::lines</a></p></aside>
+
+<h3>Tests</h3>
+<p>The fake's <code>reply</code> helper sets <code>stop_reason: None</code>. The stream fixture follows the tool-use example in the <a href="https://platform.claude.com/docs/en/build-with-claude/streaming#streaming-request-with-tool-use">streaming docs</a>, with fewer text fragments:</p>
+<pre><code>    const STREAM: &amp;str = r#"event: message_start
+data: {"type":"message_start","message":{"id":"msg_014p7gG3wDgGV9EUtLvnow3U","type":"message","role":"assistant","model":"claude-haiku-4-5","stop_sequence":null,"usage":{"input_tokens":472,"output_tokens":2},"content":[],"stop_reason":null}}
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}
+
+event: ping
+data: {"type": "ping"}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Okay"}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":", let's check the weather."}}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0}
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01T1x1fJ34qAmk2tNTrN7Up6","name":"get_weather","input":{}}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":1,"delta":{"type":"input_json_delta","partial_json":""}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":1,"delta":{"type":"input_json_delta","partial_json":"{\"location\":"}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":1,"delta":{"type":"input_json_delta","partial_json":" \"San Francisc"}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":1,"delta":{"type":"input_json_delta","partial_json":"o, CA\"}"}}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1}
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null},"usage":{"output_tokens":89}}
+
+event: message_stop
+data: {"type":"message_stop"}
+"#;
+
+    fn stream_lines(text: &amp;str) -&gt; impl Iterator&lt;Item = io::Result&lt;String&gt;&gt; {
+        text.lines()
+            .map(|line| Ok(line.to_string()))
+            .collect::&lt;Vec&lt;_&gt;&gt;()
+            .into_iter()
+    }
+
+    #[test]
+    fn a_complete_stream_assembles_text_and_tool_calls() {
+        let response = assemble(stream_lines(STREAM), &amp;mut |_, _| {}).unwrap();
+
+        assert_eq!(
+            response.content,
+            vec![
+                text("Okay, let's check the weather."),
+                tool_use(
+                    "toolu_01T1x1fJ34qAmk2tNTrN7Up6",
+                    "get_weather",
+                    json!({"location": "San Francisco, CA"}),
+                ),
+            ]
+        );
+        assert_eq!(response.stop_reason.as_deref(), Some("tool_use"));
+        assert_eq!(
+            response.usage,
+            Usage {
+                input_tokens: 472,
+                output_tokens: 89,
+            }
+        );
+    }
+
+    #[test]
+    fn text_is_shown_as_it_arrives() {
+        let mut pieces = Vec::new();
+
+        assemble(stream_lines(STREAM), &amp;mut |index, text| {
+            pieces.push((index, text.to_string()))
+        })
+        .unwrap();
+
+        assert_eq!(
+            pieces,
+            vec![
+                (0, "Okay".to_string()),
+                (0, ", let's check the weather.".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_stream_that_stops_early_is_never_a_reply() {
+        let lines: Vec&lt;&amp;str&gt; = STREAM.lines().collect();
+        for cut in 0..lines.len() {
+            let partial = lines[..cut].join("\n");
+            assert!(
+                assemble(stream_lines(&amp;partial), &amp;mut |_, _| {}).is_err(),
+                "a stream cut after {cut} lines was accepted"
+            );
+        }
+    }
+
+    #[test]
+    fn unknown_events_are_ignored() {
+        let with_extra = STREAM.replace(
+            "event: ping",
+            "event: future\ndata: {\"type\":\"some_future_event\"}\n\nevent: ping",
+        );
+
+        assert!(assemble(stream_lines(&amp;with_extra), &amp;mut |_, _| {}).is_ok());
+    }
+
+    #[test]
+    fn a_cut_off_reply_runs_no_tools() {
+        let path = "target/truncated-must-not-create.txt";
+        let _ = fs::remove_file(path);
+        let mut cut_off = reply(vec![tool_use(
+            "t1",
+            "edit_file",
+            json!({"path": path, "old_str": "", "new_str": "half a fi"}),
+        )]);
+        cut_off.stop_reason = Some("max_tokens".to_string());
+        let mut agent = agent(vec![vec![text("Sorry, I'll try again.")]]);
+        agent.model.replies.push_front(cut_off);
+        let mut conversation = ask("Create a file.");
+
+        agent.respond(&amp;mut conversation).unwrap();
+
+        assert!(!Path::new(path).exists());
+        assert!(matches!(
+            &amp;conversation[2].content[0],
+            ContentBlock::ToolResult { is_error: true, content, .. }
+                if content.contains("max_tokens")
+        ));
+    }</code></pre>
+<p><code>a_stream_that_stops_early_is_never_a_reply</code> cuts the stream after every single line and requires every shortened stream to fail, including the ones where the tool's JSON already happens to be complete.</p>
+
+<details class="hints"><summary>Hints</summary>
+<ul>
+<li>Keep three vectors indexed like the content: the blocks, a <code>String</code> of tool JSON per block, and a <code>bool</code> per block for “finished.”</li>
+<li>The <code>tool_use</code> block starts with <code>"input": {}</code>. Only replace it if fragments arrived.</li>
+<li>In <code>respond</code>, compute <code>let truncated = response.stop_reason.as_deref() == Some("max_tokens");</code> before moving <code>response.content</code> out. Inside the loop over blocks, <code>continue</code> skips to the next block.</li>
+</ul></details>
+
+<details class="solution"><summary>Reference solution</summary>
+<pre><code>impl Model for Claude {
+    fn complete(
+        &amp;mut self,
+        conversation: &amp;[Message],
+        tools: &amp;[ToolDefinition],
+    ) -&gt; Result&lt;Response, Box&lt;dyn Error&gt;&gt; {
+        let body = json!({
+            "model": MODEL,
+            "max_tokens": 4096,
+            "messages": conversation,
+            "tools": tools,
+            "stream": true,
+        });
+
+        let http_response = ureq::post(API_URL)
+            .header("x-api-key", &amp;self.api_key)
+            .header("anthropic-version", "2023-06-01")
+            .send_json(&amp;body)?;
+        let lines = BufReader::new(http_response.into_body().into_reader()).lines();
+
+        let mut printing = None;
+        let response = assemble(lines, &amp;mut |index, text| {
+            if printing != Some(index) {
+                if printing.is_some() {
+                    println!();
+                }
+                print!("\x1b[93mClaude\x1b[0m: ");
+                printing = Some(index);
+            }
+            print!("{text}");
+            let _ = io::stdout().flush();
+        })?;
+        if printing.is_some() {
+            println!();
+        }
+        Ok(response)
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+enum StreamEvent {
+    MessageStart {
+        message: StreamStart,
+    },
+    ContentBlockStart {
+        index: usize,
+        content_block: ContentBlock,
+    },
+    ContentBlockDelta {
+        index: usize,
+        delta: Delta,
+    },
+    ContentBlockStop {
+        index: usize,
+    },
+    MessageDelta {
+        delta: StreamStop,
+        #[serde(default)]
+        usage: Usage,
+    },
+    MessageStop,
+    Ping,
+    Error {
+        error: Value,
+    },
+    #[serde(other)]
+    Unknown,
+}
+
+#[derive(Deserialize)]
+struct StreamStart {
+    #[serde(default)]
+    usage: Usage,
+}
+
+#[derive(Deserialize)]
+struct StreamStop {
+    stop_reason: Option&lt;String&gt;,
+}
+
+#[derive(Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+enum Delta {
+    TextDelta {
+        text: String,
+    },
+    InputJsonDelta {
+        partial_json: String,
+    },
+    #[serde(other)]
+    Unknown,
+}
+
+fn assemble(
+    lines: impl Iterator&lt;Item = io::Result&lt;String&gt;&gt;,
+    on_text: &amp;mut dyn FnMut(usize, &amp;str),
+) -&gt; Result&lt;Response, Box&lt;dyn Error&gt;&gt; {
+    let mut content: Vec&lt;ContentBlock&gt; = Vec::new();
+    let mut tool_json: Vec&lt;String&gt; = Vec::new();
+    let mut finished: Vec&lt;bool&gt; = Vec::new();
+    let mut usage = Usage::default();
+    let mut stop_reason = None;
+
+    for line in lines {
+        let line = line?;
+        let Some(data) = line.strip_prefix("data: ") else {
+            continue;
+        };
+        match serde_json::from_str(data)? {
+            StreamEvent::MessageStart { message } =&gt; usage = message.usage,
+            StreamEvent::ContentBlockStart {
+                index,
+                content_block,
+            } =&gt; {
+                if index != content.len() {
+                    return Err(format!("content block {index} arrived out of order").into());
+                }
+                content.push(content_block);
+                tool_json.push(String::new());
+                finished.push(false);
+            }
+            StreamEvent::ContentBlockDelta { index, delta } =&gt; {
+                let Some(block) = content.get_mut(index) else {
+                    return Err(format!("a delta arrived for unknown block {index}").into());
+                };
+                match (block, delta) {
+                    (ContentBlock::Text { text }, Delta::TextDelta { text: piece }) =&gt; {
+                        on_text(index, &amp;piece);
+                        text.push_str(&amp;piece);
+                    }
+                    (ContentBlock::ToolUse { .. }, Delta::InputJsonDelta { partial_json }) =&gt; {
+                        tool_json[index].push_str(&amp;partial_json);
+                    }
+                    (_, Delta::Unknown) =&gt; {}
+                    _ =&gt; return Err(format!("a delta doesn't match block {index}").into()),
+                }
+            }
+            StreamEvent::ContentBlockStop { index } =&gt; {
+                if let Some(ContentBlock::ToolUse { input, .. }) = content.get_mut(index)
+                    &amp;&amp; !tool_json[index].is_empty()
+                {
+                    *input = serde_json::from_str(&amp;tool_json[index])?;
+                }
+                if let Some(done) = finished.get_mut(index) {
+                    *done = true;
+                }
+            }
+            StreamEvent::MessageDelta {
+                delta,
+                usage: total,
+            } =&gt; {
+                stop_reason = delta.stop_reason;
+                usage.output_tokens = total.output_tokens;
+                if total.input_tokens &gt; 0 {
+                    usage.input_tokens = total.input_tokens;
+                }
+            }
+            StreamEvent::MessageStop =&gt; {
+                if finished.contains(&amp;false) {
+                    return Err("message_stop arrived before every block was finished".into());
+                }
+                return Ok(Response {
+                    content,
+                    usage,
+                    stop_reason,
+                });
+            }
+            StreamEvent::Error { error } =&gt; {
+                return Err(format!("the API sent an error: {error}").into());
+            }
+            StreamEvent::Ping | StreamEvent::Unknown =&gt; {}
+        }
+    }
+    Err("the stream ended before message_stop, so the reply is incomplete".into())
+}
+
+#[derive(Deserialize, Debug, PartialEq)]
+struct Response {
+    content: Vec&lt;ContentBlock&gt;,
+    #[serde(default)]
+    usage: Usage,
+    #[serde(default)]
+    stop_reason: Option&lt;String&gt;,
+}
+
+    fn respond(&amp;mut self, conversation: &amp;mut Vec&lt;Message&gt;) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+        let started = Instant::now();
+        for round in 1..=self.limits.max_rounds {
+            if self.tokens_used &gt;= self.limits.max_tokens {
+                self.stop(Limit::Tokens);
+                return Ok(());
+            }
+            if let Some(deadline) = self.limits.deadline
+                &amp;&amp; started.elapsed() &gt;= deadline
+            {
+                self.stop(Limit::Deadline);
+                return Ok(());
+            }
+
+            self.log.push(Event::ModelRequested { round });
+            let request = select_context(conversation, self.limits.max_context_messages);
+            let response = self.model.complete(request, &amp;self.tools)?;
+            self.tokens_used += response.usage.input_tokens + response.usage.output_tokens;
+            let truncated = response.stop_reason.as_deref() == Some("max_tokens");
+            let content = response.content;
+
+            let mut tool_results = Vec::new();
+            for block in &amp;content {
+                match block {
+                    ContentBlock::Text { .. } =&gt; {}
+                    ContentBlock::ToolUse { id, name, input } =&gt; {
+                        if already_answered(conversation, &amp;tool_results, id) {
+                            return Err(format!(
+                                "Claude reused tool_use id {id}; refusing to run it twice"
+                            )
+                            .into());
+                        }
+                        if truncated {
+                            self.log.push(Event::ToolRejected {
+                                id: id.clone(),
+                                name: name.clone(),
+                                reason: "the response was cut off".to_string(),
+                            });
+                            tool_results.push(ContentBlock::ToolResult {
+                                tool_use_id: id.clone(),
+                                content: format!(
+                                    "{name} was not run: your response hit max_tokens, so its input may be incomplete. Send the call again with complete input."
+                                ),
+                                is_error: true,
+                            });
+                            continue;
+                        }
+                        tool_results.push(self.execute_tool(id, name, input));
+                    }
+                    ContentBlock::ToolResult { .. } =&gt; {}
+                }
+            }
+            conversation.push(Message {
+                role: Role::Assistant,
+                content,
+            });
+
+            if tool_results.is_empty() {
+                return Ok(());
+            }
+            conversation.push(Message {
+                role: Role::User,
+                content: tool_results,
+            });
+        }
+
+        self.stop(Limit::Rounds);
+        Ok(())
+    }</code></pre>
+<p>Add <code>BufRead</code> and <code>BufReader</code> to the <code>std::io</code> import.</p></details>
+
+<p class="done"><strong>Done when</strong> all 28 tests pass, and against the real Claude, replies appear word by word.</p>
+
+<div class="try"><h4>Break it on purpose</h4>
+<ol>
+<li>Replace the <code>Err</code> at the end of <code>assemble</code> with <code>Ok(Response { content, usage, stop_reason })</code>, so a stream that just stops counts as finished. <code>a_stream_that_stops_early_is_never_a_reply</code> fails. Put it back.</li>
+<li>Delete the <code>if truncated { ... }</code> block in <code>respond</code>. <code>a_cut_off_reply_runs_no_tools</code> fails, and a half-written file appears in <code>target/</code>. Put it back.</li>
+</ol></div>
+
+<div class="reading"><h4>Read a real agent</h4>
+<p>Compare our max_tokens error with Pi's <a href="https://github.com/badlogic/pi-mono/blob/c596d09d9cef6fdf0db2dd08f3eec8582b7fe8ba/packages/agent/src/agent-loop.ts#L434"><code>failToolCallsFromTruncatedMessage</code></a>: the messages are nearly the same, because the problem is the same. Then read <a href="https://github.com/badlogic/pi-mono/blob/c596d09d9cef6fdf0db2dd08f3eec8582b7fe8ba/packages/agent/src/agent-loop.ts#L339"><code>streamAssistantResponse</code></a> to see where Pi decides a streamed reply is finished.</p></div>
+
+<!-- ============================== CHAPTER 7 ============================== -->
+<h2 id="ch7">7. Thinking models</h2>
+<p>Newer models such as <code>claude-sonnet-5-5</code> think before they answer, and the API returns that thinking as <code>thinking</code> content blocks. By default their text is empty, and a <code>signature</code> field carries the reasoning in encrypted form. Our agent can't read these blocks yet: the first one fails with <code>unknown variant `thinking`</code>.</p>
+<p>The <a href="https://platform.claude.com/docs/en/build-with-claude/thinking">thinking docs</a> set two rules that matter for a harness:</p>
+<ul>
+<li><strong>Pass thinking blocks back unchanged</strong>, including <code>redacted_thinking</code> blocks, in later requests during tool use. So our types must not drop any field, including fields added in the future.</li>
+<li><strong>Don't change the history before a thinking block.</strong> On Claude Sonnet 5.5, <a href="https://platform.claude.com/docs/en/models/sonnet-5-5/whats-new-sonnet-5-5#thinking-blocks-are-tied-to-the-model-that-produced-them">the API checks</a> that nothing before a thinking block has changed since it was produced, and on newer accounts a changed history is rejected. Chapter 5's trimming changes the history. A request without thinking blocks has nothing to check, and the docs suggest exactly that remedy: strip the thinking blocks from the edited point onward. So when we trim, we send the request without any thinking blocks. The saved conversation keeps them.</li>
+</ul>
+
+<h3>Specification</h3>
+<ul>
+<li><code>ContentBlock</code> gets <code>Thinking { thinking: String, signature: String, extra }</code> and <code>RedactedThinking { data: String, extra }</code>, where <code>extra</code> is a <code>#[serde(flatten)] Map&lt;String, Value&gt;</code> that keeps any other fields.</li>
+<li>Every <code>match</code> on <code>ContentBlock</code> handles them. The compiler will list each one: <code>respond</code>, <code>validate_session</code> and <code>replay</code>, which prints <samp>Claude: (thinking)</samp>.</li>
+<li><code>Delta</code> gets <code>ThinkingDelta { thinking }</code> and <code>SignatureDelta { signature }</code>, and <code>assemble</code> appends them to the thinking block.</li>
+<li><code>fn without_thinking(messages: &amp;[Message]) -&gt; Vec&lt;Message&gt;</code> copies the messages without thinking blocks. If <code>select_context</code> dropped anything, <code>respond</code> sends that copy instead.</li>
+<li>Set <code>MODEL</code> to <code>"claude-sonnet-5-5"</code> and <code>max_tokens</code> to 16000, because thinking uses part of the output budget.</li>
+</ul>
+<p>One behavior to expect: on this model, the longer notes Claude writes between tool calls come back <a href="https://platform.claude.com/docs/en/models/sonnet-5-5/whats-new-sonnet-5-5#text-between-tool-calls">as thinking blocks</a>, so the agent is quieter between tool calls than it was with Haiku.</p>
+
+<details class="warmup"><summary><span class="warm-tag">Warm-up</span> Keeping fields you don't know about</summary>
+<p>Both structs read the same JSON and write it back out. What do the two printed lines look like?</p>
+<pre><code>use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value};
+
+#[derive(Serialize, Deserialize)]
+struct Strict {
+    name: String,
+}
+
+#[derive(Serialize, Deserialize)]
+struct Keeper {
+    name: String,
+    #[serde(flatten)]
+    rest: Map&lt;String, Value&gt;,
+}
+
+fn main() {
+    let input = r#"{"name":"thinking","signature":"abc"}"#;
+    let strict: Strict = serde_json::from_str(input).unwrap();
+    let keeper: Keeper = serde_json::from_str(input).unwrap();
+    println!("{}", serde_json::to_string(&amp;strict).unwrap());
+    println!("{}", serde_json::to_string(&amp;keeper).unwrap());
+}</code></pre>
+<p class="warm-run"><a href="https://play.rust-lang.org/?version=stable&amp;mode=debug&amp;edition=2024&amp;code=use%20serde%3A%3A%7BDeserialize%2C%20Serialize%7D%3B%0Ause%20serde_json%3A%3A%7BMap%2C%20Value%7D%3B%0A%0A%23%5Bderive%28Serialize%2C%20Deserialize%29%5D%0Astruct%20Strict%20%7B%0A%20%20%20%20name%3A%20String%2C%0A%7D%0A%0A%23%5Bderive%28Serialize%2C%20Deserialize%29%5D%0Astruct%20Keeper%20%7B%0A%20%20%20%20name%3A%20String%2C%0A%20%20%20%20%23%5Bserde%28flatten%29%5D%0A%20%20%20%20rest%3A%20Map%3CString%2C%20Value%3E%2C%0A%7D%0A%0Afn%20main%28%29%20%7B%0A%20%20%20%20let%20input%20%3D%20r%23%22%7B%22name%22%3A%22thinking%22%2C%22signature%22%3A%22abc%22%7D%22%23%3B%0A%20%20%20%20let%20strict%3A%20Strict%20%3D%20serde_json%3A%3Afrom_str%28input%29.unwrap%28%29%3B%0A%20%20%20%20let%20keeper%3A%20Keeper%20%3D%20serde_json%3A%3Afrom_str%28input%29.unwrap%28%29%3B%0A%20%20%20%20println%21%28%22%7B%7D%22%2C%20serde_json%3A%3Ato_string%28%26strict%29.unwrap%28%29%29%3B%0A%20%20%20%20println%21%28%22%7B%7D%22%2C%20serde_json%3A%3Ato_string%28%26keeper%29.unwrap%28%29%29%3B%0A%7D%0A">Run it in the Rust Playground</a>, but write down your prediction first.</p>
+<details class="answer"><summary>Show the answer</summary>
+<p><samp>{"name":"thinking"}</samp><br><samp>{"name":"thinking","signature":"abc"}</samp></p>
+<p>By default, serde silently ignores fields a struct doesn't name when reading, so writing the value back out loses them. <code>#[serde(flatten)]</code> on a <code>Map</code> collects every field the struct didn't name, and writes them back out again. For thinking blocks, which must go back to the API unchanged, keeping what you don't recognize is the only safe choice.</p>
+<p class="read">Read: <a href="https://serde.rs/attr-flatten.html">serde: flatten</a></p></details>
+</details>
+
+<aside class="rust"><h4>Rust concept · a value that has to outlive an <code>if</code></h4>
+<p>When we trim, the request is a new <code>Vec</code> we just built. When we don't, it's a slice of the conversation. One variable has to point at either one:</p>
+<pre><code>            let selected = select_context(conversation, self.limits.max_context_messages);
+            let stripped;
+            let request: &amp;[Message] = if selected.len() &lt; conversation.len() {
+                stripped = without_thinking(selected);
+                &amp;stripped
+            } else {
+                selected
+            };</code></pre>
+<p><code>let stripped;</code> declares a variable <em>before</em> giving it a value. Rust checks that it's assigned before it's used. Because it's declared outside the <code>if</code>, the vector lives until the end of the loop body, long enough for <code>request</code> to borrow it. If you wrote <code>let stripped = without_thinking(selected);</code> inside the branch, the vector would be dropped at the branch's closing brace, and you'd get <code>error[E0597]: `stripped` does not live long enough</code>. The annotation <code>&amp;[Message]</code> lets both branches agree on one type: a <code>&amp;Vec&lt;Message&gt;</code> converts to a slice automatically.</p>
+<p class="read">Read: <a href="https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html#dangling-references">§4.2 Dangling references</a> · <a href="https://doc.rust-lang.org/book/ch10-03-lifetime-syntax.html#preventing-dangling-references-with-lifetimes">§10.3 Preventing dangling references</a></p></aside>
+
+<h3>Tests</h3>
+<pre><code>    fn thinking(signature: &amp;str) -&gt; ContentBlock {
+        ContentBlock::Thinking {
+            thinking: String::new(),
+            signature: signature.to_string(),
+            extra: Map::new(),
+        }
+    }
+
+    #[test]
+    fn thinking_blocks_round_trip_unchanged() {
+        let original = json!({
+            "type": "thinking",
+            "thinking": "",
+            "signature": "EosnCkYICxIMMb3LzNrMu",
+            "a_field_from_the_future": {"x": 1}
+        });
+
+        let block: ContentBlock = serde_json::from_value(original.clone()).unwrap();
+
+        assert_eq!(serde_json::to_value(&amp;block).unwrap(), original);
+    }
+
+    #[test]
+    fn thinking_goes_back_unchanged_when_nothing_was_trimmed() {
+        let mut agent = agent(vec![
+            vec![
+                thinking("sig-1"),
+                tool_use("t1", "read_file", json!({"path": "Cargo.toml"})),
+            ],
+            vec![text("It's a Cargo manifest.")],
+        ]);
+        let mut conversation = ask("What's in Cargo.toml?");
+
+        agent.respond(&amp;mut conversation).unwrap();
+
+        assert_eq!(agent.model.requests[1][1].content[0], thinking("sig-1"));
+    }
+
+    #[test]
+    fn trimming_the_history_strips_thinking_from_the_request() {
+        let mut conversation = three_turns();
+        conversation[9].content.insert(0, thinking("sig-old"));
+        conversation.push(ask("Question 4").remove(0));
+        let mut agent = agent(vec![vec![text("Answer 4")]]);
+        agent.limits = Limits {
+            max_context_messages: 6,
+            ..Limits::default()
+        };
+
+        agent.respond(&amp;mut conversation).unwrap();
+
+        let request = &amp;agent.model.requests[0];
+        assert!(request.len() &lt; conversation.len());
+        assert!(
+            !request
+                .iter()
+                .flat_map(|message| &amp;message.content)
+                .any(|block| matches!(block, ContentBlock::Thinking { .. }))
+        );
+        assert_eq!(conversation[9].content[0], thinking("sig-old"));
+    }
+
+    #[test]
+    fn a_streamed_thinking_block_is_assembled() {
+        let stream = r#"data: {"type": "message_start", "message": {"id": "msg_01", "type": "message", "role": "assistant", "content": [], "model": "claude-sonnet-5-5", "stop_reason": null, "stop_sequence": null}}
+data: {"type": "content_block_start", "index": 0, "content_block": {"type": "thinking", "thinking": "", "signature": ""}}
+data: {"type": "content_block_delta", "index": 0, "delta": {"type": "thinking_delta", "thinking": ""}}
+data: {"type": "content_block_delta", "index": 0, "delta": {"type": "signature_delta", "signature": "EqQBCgIYAhIM1gbcDa9GJwZA2b3hGgxBdjrkzLoky3dl1pkiMOYds"}}
+data: {"type": "content_block_stop", "index": 0}
+data: {"type": "content_block_start", "index": 1, "content_block": {"type": "text", "text": ""}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "21"}}
+data: {"type": "content_block_stop", "index": 1}
+data: {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_sequence": null}}
+data: {"type": "message_stop"}"#;
+
+        let response = assemble(stream_lines(stream), &amp;mut |_, _| {}).unwrap();
+
+        assert_eq!(
+            response.content,
+            vec![
+                thinking("EqQBCgIYAhIM1gbcDa9GJwZA2b3hGgxBdjrkzLoky3dl1pkiMOYds"),
+                text("21"),
+            ]
+        );
+    }</code></pre>
+<p>The streamed fixture follows the thinking example in the <a href="https://platform.claude.com/docs/en/build-with-claude/streaming#thinking-delta">streaming docs</a>, with the empty thinking text you get by default.</p>
+
+<details class="hints"><summary>Hints</summary>
+<ul>
+<li>After adding the variants, run <code>cargo build</code> and fix each <code>E0004</code> it reports. That's the exhaustive <code>match</code> from part 1 doing its job.</li>
+<li>In <code>without_thinking</code>, drop any message left with no content, because the API rejects empty messages.</li>
+</ul></details>
+
+<details class="solution"><summary>Reference solution</summary>
+<pre><code>#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde(tag = "type", rename_all = "snake_case")]
+enum ContentBlock {
+    Text {
+        text: String,
+    },
+    ToolUse {
+        id: String,
+        name: String,
+        input: Value,
+    },
+    ToolResult {
+        tool_use_id: String,
+        content: String,
+        is_error: bool,
+    },
+    Thinking {
+        thinking: String,
+        signature: String,
+        #[serde(flatten)]
+        extra: Map&lt;String, Value&gt;,
+    },
+    RedactedThinking {
+        data: String,
+        #[serde(flatten)]
+        extra: Map&lt;String, Value&gt;,
+    },
+}
+
+fn without_thinking(messages: &amp;[Message]) -&gt; Vec&lt;Message&gt; {
+    messages
+        .iter()
+        .map(|message| Message {
+            role: message.role.clone(),
+            content: message
+                .content
+                .iter()
+                .filter(|block| {
+                    !matches!(
+                        block,
+                        ContentBlock::Thinking { .. } | ContentBlock::RedactedThinking { .. }
+                    )
+                })
+                .cloned()
+                .collect(),
+        })
+        .filter(|message| !message.content.is_empty())
+        .collect()
+}
+
+#[derive(Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+enum Delta {
+    TextDelta {
+        text: String,
+    },
+    InputJsonDelta {
+        partial_json: String,
+    },
+    ThinkingDelta {
+        thinking: String,
+    },
+    SignatureDelta {
+        signature: String,
+    },
+    #[serde(other)]
+    Unknown,
+}</code></pre>
+<p>New arms in <code>assemble</code>:</p>
+<pre><code>                    (
+                        ContentBlock::Thinking { thinking, .. },
+                        Delta::ThinkingDelta { thinking: piece },
+                    ) =&gt; {
+                        thinking.push_str(&amp;piece);
+                    }
+                    (
+                        ContentBlock::Thinking { signature, .. },
+                        Delta::SignatureDelta { signature: piece },
+                    ) =&gt; {
+                        signature.push_str(&amp;piece);
+                    }</code></pre>
+<p>In <code>respond</code>, use the code from the box above, and add <code>| ContentBlock::Thinking { .. } | ContentBlock::RedactedThinking { .. }</code> to the arm that ignores tool results. Add <code>Map</code> to the <code>serde_json</code> import.</p></details>
+
+<p class="done"><strong>Done when</strong> all 32 tests pass, and the real agent completes a multi-step task on <code>claude-sonnet-5-5</code>.</p>
+
+<div class="try"><h4>Break it on purpose</h4>
+<p>Make <code>respond</code> always send <code>selected</code>, never the stripped copy. <code>trimming_the_history_strips_thinking_from_the_request</code> fails. On a real account, that's the request the API would reject once a long session starts trimming. Put it back.</p></div>
+
+<!-- ============================== CHAPTER 8 ============================== -->
+<h2 id="ch8">8. Capstone: the evidence beats the claim</h2>
+<p>Everything comes together in one scene. You ask Claude to change two files. It proposes both edits, you approve one and deny the other, and then Claude says <em>“Done! I updated both files.”</em> That's not a lie the model told on purpose. Its last message just doesn't match what happened. What does your agent let you prove?</p>
+<p>This time there are no tests to copy. <strong>Write <code>capstone_the_evidence_beats_the_claim</code> yourself</strong> from this description:</p>
+<ul>
+<li>Two scratch files under <code>target/</code> start as <code>"old"</code>. The fake model replies first with text plus two <code>edit_file</code> calls, <code>t1</code> for file A and <code>t2</code> for file B, and then with <code>"Done! I updated both files."</code></li>
+<li>The approver allows only file A. Hint: <code>Box::new(move |_, input| input["path"] == a)</code> works because <code>a</code> is a string literal, which is <code>'static</code>.</li>
+<li>Assert the claim is in the conversation. Then assert the evidence: file A says <code>"new"</code>, file B still says <code>"old"</code>, exactly one <code>ToolFinished</code> succeeded, <code>t2</code> was rejected, and the agent used 300 tokens.</li>
+<li>Save the session, load it back, check it equals the original, and check that the replay shows <samp>-&gt; error: the user did not allow this edit_file call</samp>.</li>
+</ul>
+
+<details class="solution"><summary>Reference solution</summary>
+<pre><code>    #[test]
+    fn capstone_the_evidence_beats_the_claim() {
+        let a = "target/capstone-a.txt";
+        let b = "target/capstone-b.txt";
+        fs::write(a, "old").unwrap();
+        fs::write(b, "old").unwrap();
+        let session_path = Path::new(fresh_path("target/capstone-session.json"));
+        let edit = |id: &amp;str, path: &amp;str| {
+            tool_use(
+                id,
+                "edit_file",
+                json!({"path": path, "old_str": "old", "new_str": "new"}),
+            )
+        };
+        let mut agent = agent_with_approval(
+            vec![
+                vec![
+                    text("I'll update both files."),
+                    edit("t1", a),
+                    edit("t2", b),
+                ],
+                vec![text("Done! I updated both files.")],
+            ],
+            Box::new(move |_, input| input["path"] == a),
+        );
+        let mut conversation = ask("Change old to new in both files.");
+
+        agent.respond(&amp;mut conversation).unwrap();
+
+        let claim = &amp;conversation[3].content[0];
+        assert_eq!(claim, &amp;text("Done! I updated both files."));
+
+        assert_eq!(fs::read_to_string(a).unwrap(), "new");
+        assert_eq!(fs::read_to_string(b).unwrap(), "old");
+
+        let succeeded = agent
+            .log
+            .iter()
+            .filter(|event| {
+                matches!(
+                    event,
+                    Event::ToolFinished {
+                        is_error: false,
+                        ..
+                    }
+                )
+            })
+            .count();
+        assert_eq!(succeeded, 1);
+        assert!(agent.log.iter().any(|event| matches!(
+            event,
+            Event::ToolRejected { id, .. } if id == "t2"
+        )));
+        assert_eq!(agent.tokens_used, 300);
+
+        let session = Session {
+            version: SESSION_VERSION,
+            conversation,
+            log: agent.log,
+        };
+        save_session(session_path, &amp;session).unwrap();
+        let loaded = load_session(session_path).unwrap();
+        assert_eq!(loaded, session);
+        assert!(replay(&amp;loaded).contains("-&gt; error: the user did not allow this edit_file call"));
+    }</code></pre></details>
+
+<p class="done"><strong>Done when</strong> all 33 tests pass.</p>
+
+<div class="try"><h4>Ask yourself</h4>
+<ul>
+<li>Which of your assertions would still pass if the harness simply believed Claude's last message?</li>
+<li>What does the log prove that the conversation can't?</li>
+<li>If you replaced the fake with the real Claude, which assertions would stay reliable, and which would start depending on what the model happened to say?</li>
+</ul></div>
+
+<!-- ============================== WRAP-UP ============================== -->
+<h2 id="built">What you've built</h2>
+<p>Your agent still has the same small loop from part 1. Around it, the harness now decides <em>what may run</em> (validation, approval, cut-off replies), <em>how much may happen</em> (rounds, tokens, time), <em>what the model sees</em> (whole turns, with thinking blocks intact or stripped), and <em>what you can check afterward</em> (a typed log and sessions you can replay). The model proposes, and the harness decides. None of those decisions depends on what the model says.</p>
+<h3>Where to go next</h3>
+<ul>
+<li><strong>Run commands, safely.</strong> A <code>run_command</code> tool is where <code>checked_path</code> stops being enough. A command can touch anything your user account can. Real isolation comes from the operating system: a container, a separate user, or a sandbox with no network. Ask for approval every time, and test what happens when it's denied.</li>
+<li><strong>Do things in parallel.</strong> When Claude asks for several reads at once, they could run concurrently. That's the point where async Rust and a runtime such as Tokio start to pay off. Async doesn't replace any of the checks you've built. See <a href="https://doc.rust-lang.org/book/ch17-00-async-await.html">§17 Async and await</a>.</li>
+<li><strong>Connect more tools.</strong> The <a href="https://modelcontextprotocol.io">Model Context Protocol</a> is a standard way to connect tools written by others. It changes where tools come from, not the loop. Approval, limits and logging still belong to your harness.</li>
+<li><strong>Split it up.</strong> At over 1,000 lines, including tests, it's time for modules: <code>model.rs</code>, <code>tools.rs</code>, <code>session.rs</code>, <code>stream.rs</code>. See <a href="https://doc.rust-lang.org/book/ch07-05-separating-modules-into-different-files.html">§7.5 Separating modules into different files</a>.</li>
+</ul>
+
+<h2 id="listing">The complete program</h2>
+<p>After chapter 8, with all 33 tests.</p>
+<details><summary>Show the complete src/main.rs (1766 lines)</summary>
+<p class="file">src/main.rs</p>
+<pre><code>use std::collections::HashSet;
+use std::error::Error;
+use std::fmt::Write as _;
+use std::fs::{self, File, OpenOptions};
+use std::io::{self, BufRead, BufReader, Read, Write};
+use std::path::{Component, Path};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+
+use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value, json};
+
+const MODEL: &amp;str = "claude-sonnet-5-5";
+const API_URL: &amp;str = "https://api.anthropic.com/v1/messages";
+const SESSION_VERSION: u32 = 1;
+const MAX_SESSION_BYTES: u64 = 1024 * 1024;
+
+fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let args: Vec&lt;String&gt; = std::env::args().collect();
+    if let [_, flag, path] = args.as_slice()
+        &amp;&amp; flag == "--replay"
+    {
+        let session = load_session(Path::new(path))?;
+        print!("{}", replay(&amp;session));
+        return Ok(());
+    }
+
+    let api_key = std::env::var("ANTHROPIC_API_KEY").expect("ANTHROPIC_API_KEY must be set");
+    let tools = vec![read_file_tool(), list_files_tool(), edit_file_tool()];
+    let mut agent = Agent::new(Claude { api_key }, tools, Box::new(ask_user));
+    let conversation = agent.run()?;
+
+    let session = Session {
+        version: SESSION_VERSION,
+        conversation,
+        log: agent.log,
+    };
+    fs::create_dir_all("sessions")?;
+    let seconds = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+    let path = format!("sessions/session-{seconds}.json");
+    save_session(Path::new(&amp;path), &amp;session)?;
+    println!("Saved this session to {path}. Replay it with: cargo run -- --replay {path}");
+    Ok(())
+}
+
+trait Model {
+    fn complete(
+        &amp;mut self,
+        conversation: &amp;[Message],
+        tools: &amp;[ToolDefinition],
+    ) -&gt; Result&lt;Response, Box&lt;dyn Error&gt;&gt;;
+}
+
+struct Claude {
+    api_key: String,
+}
+
+impl Model for Claude {
+    fn complete(
+        &amp;mut self,
+        conversation: &amp;[Message],
+        tools: &amp;[ToolDefinition],
+    ) -&gt; Result&lt;Response, Box&lt;dyn Error&gt;&gt; {
+        let body = json!({
+            "model": MODEL,
+            "max_tokens": 16000,
+            "messages": conversation,
+            "tools": tools,
+            "stream": true,
+        });
+
+        let http_response = ureq::post(API_URL)
+            .header("x-api-key", &amp;self.api_key)
+            .header("anthropic-version", "2023-06-01")
+            .send_json(&amp;body)?;
+        let lines = BufReader::new(http_response.into_body().into_reader()).lines();
+
+        let mut printing = None;
+        let response = assemble(lines, &amp;mut |index, text| {
+            if printing != Some(index) {
+                if printing.is_some() {
+                    println!();
+                }
+                print!("\x1b[93mClaude\x1b[0m: ");
+                printing = Some(index);
+            }
+            print!("{text}");
+            let _ = io::stdout().flush();
+        })?;
+        if printing.is_some() {
+            println!();
+        }
+        Ok(response)
+    }
+}
+
+struct Agent&lt;M: Model&gt; {
+    model: M,
+    tools: Vec&lt;ToolDefinition&gt;,
+    approve: Box&lt;dyn FnMut(&amp;str, &amp;Value) -&gt; bool&gt;,
+    log: Vec&lt;Event&gt;,
+    limits: Limits,
+    tokens_used: u64,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct Limits {
+    max_rounds: usize,
+    max_tokens: u64,
+    deadline: Option&lt;Duration&gt;,
+    max_context_messages: usize,
+}
+
+impl Default for Limits {
+    fn default() -&gt; Limits {
+        Limits {
+            max_rounds: 10,
+            max_tokens: 500_000,
+            deadline: Some(Duration::from_secs(300)),
+            max_context_messages: 200,
+        }
+    }
+}
+
+impl&lt;M: Model&gt; Agent&lt;M&gt; {
+    fn new(
+        model: M,
+        tools: Vec&lt;ToolDefinition&gt;,
+        approve: Box&lt;dyn FnMut(&amp;str, &amp;Value) -&gt; bool&gt;,
+    ) -&gt; Agent&lt;M&gt; {
+        Agent {
+            model,
+            tools,
+            approve,
+            log: Vec::new(),
+            limits: Limits::default(),
+            tokens_used: 0,
+        }
+    }
+
+    fn run(&amp;mut self) -&gt; Result&lt;Vec&lt;Message&gt;, Box&lt;dyn Error&gt;&gt; {
+        let mut conversation: Vec&lt;Message&gt; = Vec::new();
+
+        println!("Chat with Claude (use 'ctrl-c' to quit)");
+
+        loop {
+            print!("\x1b[94mYou\x1b[0m: ");
+            io::stdout().flush()?;
+            let Some(user_input) = read_line()? else {
+                break;
+            };
+            if user_input.is_empty() {
+                continue;
+            }
+            conversation.push(Message {
+                role: Role::User,
+                content: vec![ContentBlock::Text { text: user_input }],
+            });
+
+            self.respond(&amp;mut conversation)?;
+        }
+
+        Ok(conversation)
+    }
+
+    fn respond(&amp;mut self, conversation: &amp;mut Vec&lt;Message&gt;) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+        let started = Instant::now();
+        for round in 1..=self.limits.max_rounds {
+            if self.tokens_used &gt;= self.limits.max_tokens {
+                self.stop(Limit::Tokens);
+                return Ok(());
+            }
+            if let Some(deadline) = self.limits.deadline
+                &amp;&amp; started.elapsed() &gt;= deadline
+            {
+                self.stop(Limit::Deadline);
+                return Ok(());
+            }
+
+            self.log.push(Event::ModelRequested { round });
+            let selected = select_context(conversation, self.limits.max_context_messages);
+            let stripped;
+            let request: &amp;[Message] = if selected.len() &lt; conversation.len() {
+                stripped = without_thinking(selected);
+                &amp;stripped
+            } else {
+                selected
+            };
+            let response = self.model.complete(request, &amp;self.tools)?;
+            self.tokens_used += response.usage.input_tokens + response.usage.output_tokens;
+            let truncated = response.stop_reason.as_deref() == Some("max_tokens");
+            let content = response.content;
+
+            let mut tool_results = Vec::new();
+            for block in &amp;content {
+                match block {
+                    ContentBlock::Text { .. } =&gt; {}
+                    ContentBlock::ToolUse { id, name, input } =&gt; {
+                        if already_answered(conversation, &amp;tool_results, id) {
+                            return Err(format!(
+                                "Claude reused tool_use id {id}; refusing to run it twice"
+                            )
+                            .into());
+                        }
+                        if truncated {
+                            self.log.push(Event::ToolRejected {
+                                id: id.clone(),
+                                name: name.clone(),
+                                reason: "the response was cut off".to_string(),
+                            });
+                            tool_results.push(ContentBlock::ToolResult {
+                                tool_use_id: id.clone(),
+                                content: format!(
+                                    "{name} was not run: your response hit max_tokens, so its input may be incomplete. Send the call again with complete input."
+                                ),
+                                is_error: true,
+                            });
+                            continue;
+                        }
+                        tool_results.push(self.execute_tool(id, name, input));
+                    }
+                    ContentBlock::ToolResult { .. }
+                    | ContentBlock::Thinking { .. }
+                    | ContentBlock::RedactedThinking { .. } =&gt; {}
+                }
+            }
+            conversation.push(Message {
+                role: Role::Assistant,
+                content,
+            });
+
+            if tool_results.is_empty() {
+                return Ok(());
+            }
+            conversation.push(Message {
+                role: Role::User,
+                content: tool_results,
+            });
+        }
+
+        self.stop(Limit::Rounds);
+        Ok(())
+    }
+
+    fn stop(&amp;mut self, limit: Limit) {
+        self.log.push(Event::LimitReached { limit });
+        let reason = match limit {
+            Limit::Rounds =&gt; format!("{} rounds of tool calls", self.limits.max_rounds),
+            Limit::Tokens =&gt; format!("the budget of {} tokens", self.limits.max_tokens),
+            Limit::Deadline =&gt; "the time limit for one turn".to_string(),
+        };
+        println!("\x1b[91mStopped: reached {reason}.\x1b[0m");
+    }
+
+    fn execute_tool(&amp;mut self, id: &amp;str, name: &amp;str, input: &amp;Value) -&gt; ContentBlock {
+        let Some(tool) = self.tools.iter().find(|tool| tool.name == name) else {
+            self.log.push(Event::ToolRejected {
+                id: id.to_string(),
+                name: name.to_string(),
+                reason: "unknown tool".to_string(),
+            });
+            return ContentBlock::ToolResult {
+                tool_use_id: id.to_string(),
+                content: "tool not found".to_string(),
+                is_error: true,
+            };
+        };
+
+        if tool.needs_approval &amp;&amp; !(self.approve)(name, input) {
+            self.log.push(Event::ToolRejected {
+                id: id.to_string(),
+                name: name.to_string(),
+                reason: "denied by the user".to_string(),
+            });
+            return ContentBlock::ToolResult {
+                tool_use_id: id.to_string(),
+                content: format!("the user did not allow this {name} call"),
+                is_error: true,
+            };
+        }
+
+        println!("\x1b[92mtool\x1b[0m: {name}({input})");
+        self.log.push(Event::ToolStarted {
+            id: id.to_string(),
+            name: name.to_string(),
+        });
+        let (content, is_error) = match (tool.function)(input.clone()) {
+            Ok(output) =&gt; (output, false),
+            Err(err) =&gt; (err.to_string(), true),
+        };
+        self.log.push(Event::ToolFinished {
+            id: id.to_string(),
+            is_error,
+        });
+
+        ContentBlock::ToolResult {
+            tool_use_id: id.to_string(),
+            content,
+            is_error,
+        }
+    }
+}
+
+fn select_context(conversation: &amp;[Message], max_messages: usize) -&gt; &amp;[Message] {
+    let Some(latest) = conversation.iter().rposition(starts_a_turn) else {
+        return conversation;
+    };
+    let start = (0..=latest)
+        .find(|&amp;i| starts_a_turn(&amp;conversation[i]) &amp;&amp; conversation.len() - i &lt;= max_messages)
+        .unwrap_or(latest);
+    &amp;conversation[start..]
+}
+
+fn without_thinking(messages: &amp;[Message]) -&gt; Vec&lt;Message&gt; {
+    messages
+        .iter()
+        .map(|message| Message {
+            role: message.role.clone(),
+            content: message
+                .content
+                .iter()
+                .filter(|block| {
+                    !matches!(
+                        block,
+                        ContentBlock::Thinking { .. } | ContentBlock::RedactedThinking { .. }
+                    )
+                })
+                .cloned()
+                .collect(),
+        })
+        .filter(|message| !message.content.is_empty())
+        .collect()
+}
+
+fn starts_a_turn(message: &amp;Message) -&gt; bool {
+    message.role == Role::User
+        &amp;&amp; !message
+            .content
+            .iter()
+            .any(|block| matches!(block, ContentBlock::ToolResult { .. }))
+}
+
+fn already_answered(conversation: &amp;[Message], pending: &amp;[ContentBlock], id: &amp;str) -&gt; bool {
+    conversation
+        .iter()
+        .flat_map(|message| &amp;message.content)
+        .chain(pending)
+        .any(|block| matches!(block, ContentBlock::ToolResult { tool_use_id, .. } if tool_use_id == id))
+}
+
+fn ask_user(name: &amp;str, input: &amp;Value) -&gt; bool {
+    print!("\x1b[95mAllow {name}({input})? [y/N]\x1b[0m ");
+    if io::stdout().flush().is_err() {
+        return false;
+    }
+    matches!(read_line(), Ok(Some(answer)) if answer.eq_ignore_ascii_case("y"))
+}
+
+fn read_line() -&gt; io::Result&lt;Option&lt;String&gt;&gt; {
+    let mut line = String::new();
+    if io::stdin().read_line(&amp;mut line)? == 0 {
+        return Ok(None);
+    }
+    Ok(Some(line.trim().to_string()))
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "lowercase")]
+enum Role {
+    User,
+    Assistant,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+struct Message {
+    role: Role,
+    content: Vec&lt;ContentBlock&gt;,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde(tag = "type", rename_all = "snake_case")]
+enum ContentBlock {
+    Text {
+        text: String,
+    },
+    ToolUse {
+        id: String,
+        name: String,
+        input: Value,
+    },
+    ToolResult {
+        tool_use_id: String,
+        content: String,
+        is_error: bool,
+    },
+    Thinking {
+        thinking: String,
+        signature: String,
+        #[serde(flatten)]
+        extra: Map&lt;String, Value&gt;,
+    },
+    RedactedThinking {
+        data: String,
+        #[serde(flatten)]
+        extra: Map&lt;String, Value&gt;,
+    },
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde(tag = "event", rename_all = "snake_case")]
+enum Event {
+    ModelRequested {
+        round: usize,
+    },
+    ToolStarted {
+        id: String,
+        name: String,
+    },
+    ToolFinished {
+        id: String,
+        is_error: bool,
+    },
+    ToolRejected {
+        id: String,
+        name: String,
+        reason: String,
+    },
+    LimitReached {
+        limit: Limit,
+    },
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
+#[serde(rename_all = "snake_case")]
+enum Limit {
+    Rounds,
+    Tokens,
+    Deadline,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[serde(deny_unknown_fields)]
+struct Session {
+    version: u32,
+    conversation: Vec&lt;Message&gt;,
+    log: Vec&lt;Event&gt;,
+}
+
+fn save_session(path: &amp;Path, session: &amp;Session) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let json = serde_json::to_string_pretty(session)?;
+    let mut file = OpenOptions::new().write(true).create_new(true).open(path)?;
+    file.write_all(json.as_bytes())?;
+    Ok(())
+}
+
+fn load_session(path: &amp;Path) -&gt; Result&lt;Session, Box&lt;dyn Error&gt;&gt; {
+    let mut text = String::new();
+    File::open(path)?
+        .take(MAX_SESSION_BYTES + 1)
+        .read_to_string(&amp;mut text)?;
+    if text.len() as u64 &gt; MAX_SESSION_BYTES {
+        return Err("the session file is larger than 1 MiB".into());
+    }
+    let session: Session = serde_json::from_str(&amp;text)?;
+    validate_session(&amp;session)?;
+    Ok(session)
+}
+
+fn validate_session(session: &amp;Session) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    if session.version != SESSION_VERSION {
+        return Err(format!("unsupported session version {}", session.version).into());
+    }
+
+    let mut seen = HashSet::new();
+    let mut unanswered: Vec&lt;&amp;str&gt; = Vec::new();
+    for message in &amp;session.conversation {
+        for block in &amp;message.content {
+            match block {
+                ContentBlock::Text { .. }
+                | ContentBlock::Thinking { .. }
+                | ContentBlock::RedactedThinking { .. } =&gt; {}
+                ContentBlock::ToolUse { id, .. } =&gt; {
+                    if !seen.insert(id.as_str()) {
+                        return Err(format!("tool_use id {id} appears twice").into());
+                    }
+                    unanswered.push(id);
+                }
+                ContentBlock::ToolResult { tool_use_id, .. } =&gt; {
+                    let Some(index) = unanswered.iter().position(|id| id == tool_use_id) else {
+                        return Err(format!(
+                            "tool_result {tool_use_id} answers no earlier tool_use"
+                        )
+                        .into());
+                    };
+                    unanswered.remove(index);
+                }
+            }
+        }
+    }
+    if let Some(id) = unanswered.first() {
+        return Err(format!("tool_use {id} was never answered").into());
+    }
+    Ok(())
+}
+
+fn replay(session: &amp;Session) -&gt; String {
+    let mut out = String::new();
+    for message in &amp;session.conversation {
+        for block in &amp;message.content {
+            match (&amp;message.role, block) {
+                (Role::User, ContentBlock::Text { text }) =&gt; writeln!(out, "You: {text}").unwrap(),
+                (Role::Assistant, ContentBlock::Text { text }) =&gt; {
+                    writeln!(out, "Claude: {text}").unwrap()
+                }
+                (_, ContentBlock::ToolUse { name, input, .. }) =&gt; {
+                    writeln!(out, "tool: {name}({input})").unwrap()
+                }
+                (
+                    _,
+                    ContentBlock::ToolResult {
+                        content, is_error, ..
+                    },
+                ) =&gt; {
+                    if *is_error {
+                        writeln!(out, "  -&gt; error: {content}").unwrap()
+                    } else {
+                        writeln!(out, "  -&gt; ok, {} bytes", content.len()).unwrap()
+                    }
+                }
+                (_, ContentBlock::Thinking { .. } | ContentBlock::RedactedThinking { .. }) =&gt; {
+                    writeln!(out, "Claude: (thinking)").unwrap()
+                }
+            }
+        }
+    }
+    out
+}
+
+#[derive(Deserialize, Debug, PartialEq)]
+struct Response {
+    content: Vec&lt;ContentBlock&gt;,
+    #[serde(default)]
+    usage: Usage,
+    #[serde(default)]
+    stop_reason: Option&lt;String&gt;,
+}
+
+#[derive(Deserialize, Debug, Default, Clone, Copy, PartialEq)]
+#[serde(default)]
+struct Usage {
+    input_tokens: u64,
+    output_tokens: u64,
+}
+
+#[derive(Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+enum StreamEvent {
+    MessageStart {
+        message: StreamStart,
+    },
+    ContentBlockStart {
+        index: usize,
+        content_block: ContentBlock,
+    },
+    ContentBlockDelta {
+        index: usize,
+        delta: Delta,
+    },
+    ContentBlockStop {
+        index: usize,
+    },
+    MessageDelta {
+        delta: StreamStop,
+        #[serde(default)]
+        usage: Usage,
+    },
+    MessageStop,
+    Ping,
+    Error {
+        error: Value,
+    },
+    #[serde(other)]
+    Unknown,
+}
+
+#[derive(Deserialize)]
+struct StreamStart {
+    #[serde(default)]
+    usage: Usage,
+}
+
+#[derive(Deserialize)]
+struct StreamStop {
+    stop_reason: Option&lt;String&gt;,
+}
+
+#[derive(Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+enum Delta {
+    TextDelta {
+        text: String,
+    },
+    InputJsonDelta {
+        partial_json: String,
+    },
+    ThinkingDelta {
+        thinking: String,
+    },
+    SignatureDelta {
+        signature: String,
+    },
+    #[serde(other)]
+    Unknown,
+}
+
+fn assemble(
+    lines: impl Iterator&lt;Item = io::Result&lt;String&gt;&gt;,
+    on_text: &amp;mut dyn FnMut(usize, &amp;str),
+) -&gt; Result&lt;Response, Box&lt;dyn Error&gt;&gt; {
+    let mut content: Vec&lt;ContentBlock&gt; = Vec::new();
+    let mut tool_json: Vec&lt;String&gt; = Vec::new();
+    let mut finished: Vec&lt;bool&gt; = Vec::new();
+    let mut usage = Usage::default();
+    let mut stop_reason = None;
+
+    for line in lines {
+        let line = line?;
+        let Some(data) = line.strip_prefix("data: ") else {
+            continue;
+        };
+        match serde_json::from_str(data)? {
+            StreamEvent::MessageStart { message } =&gt; usage = message.usage,
+            StreamEvent::ContentBlockStart {
+                index,
+                content_block,
+            } =&gt; {
+                if index != content.len() {
+                    return Err(format!("content block {index} arrived out of order").into());
+                }
+                content.push(content_block);
+                tool_json.push(String::new());
+                finished.push(false);
+            }
+            StreamEvent::ContentBlockDelta { index, delta } =&gt; {
+                let Some(block) = content.get_mut(index) else {
+                    return Err(format!("a delta arrived for unknown block {index}").into());
+                };
+                match (block, delta) {
+                    (ContentBlock::Text { text }, Delta::TextDelta { text: piece }) =&gt; {
+                        on_text(index, &amp;piece);
+                        text.push_str(&amp;piece);
+                    }
+                    (ContentBlock::ToolUse { .. }, Delta::InputJsonDelta { partial_json }) =&gt; {
+                        tool_json[index].push_str(&amp;partial_json);
+                    }
+                    (
+                        ContentBlock::Thinking { thinking, .. },
+                        Delta::ThinkingDelta { thinking: piece },
+                    ) =&gt; {
+                        thinking.push_str(&amp;piece);
+                    }
+                    (
+                        ContentBlock::Thinking { signature, .. },
+                        Delta::SignatureDelta { signature: piece },
+                    ) =&gt; {
+                        signature.push_str(&amp;piece);
+                    }
+                    (_, Delta::Unknown) =&gt; {}
+                    _ =&gt; return Err(format!("a delta doesn't match block {index}").into()),
+                }
+            }
+            StreamEvent::ContentBlockStop { index } =&gt; {
+                if let Some(ContentBlock::ToolUse { input, .. }) = content.get_mut(index)
+                    &amp;&amp; !tool_json[index].is_empty()
+                {
+                    *input = serde_json::from_str(&amp;tool_json[index])?;
+                }
+                if let Some(done) = finished.get_mut(index) {
+                    *done = true;
+                }
+            }
+            StreamEvent::MessageDelta {
+                delta,
+                usage: total,
+            } =&gt; {
+                stop_reason = delta.stop_reason;
+                usage.output_tokens = total.output_tokens;
+                if total.input_tokens &gt; 0 {
+                    usage.input_tokens = total.input_tokens;
+                }
+            }
+            StreamEvent::MessageStop =&gt; {
+                if finished.contains(&amp;false) {
+                    return Err("message_stop arrived before every block was finished".into());
+                }
+                return Ok(Response {
+                    content,
+                    usage,
+                    stop_reason,
+                });
+            }
+            StreamEvent::Error { error } =&gt; {
+                return Err(format!("the API sent an error: {error}").into());
+            }
+            StreamEvent::Ping | StreamEvent::Unknown =&gt; {}
+        }
+    }
+    Err("the stream ended before message_stop, so the reply is incomplete".into())
+}
+
+#[derive(Serialize)]
+struct ToolDefinition {
+    name: &amp;'static str,
+    description: &amp;'static str,
+    input_schema: Value,
+    #[serde(skip)]
+    function: fn(Value) -&gt; Result&lt;String, Box&lt;dyn Error&gt;&gt;,
+    #[serde(skip)]
+    needs_approval: bool,
+}
+
+fn checked_path(path: &amp;str) -&gt; Result&lt;&amp;Path, Box&lt;dyn Error&gt;&gt; {
+    let path = Path::new(path);
+    for component in path.components() {
+        match component {
+            Component::Normal(_) | Component::CurDir =&gt; {}
+            _ =&gt; {
+                return Err(format!(
+                    "{} is outside the working directory; use a relative path without '..'",
+                    path.display()
+                )
+                .into());
+            }
+        }
+    }
+    Ok(path)
+}
+
+#[derive(Deserialize)]
+struct ReadFileInput {
+    path: String,
+}
+
+fn read_file_tool() -&gt; ToolDefinition {
+    ToolDefinition {
+        name: "read_file",
+        description: "Read the contents of a given relative file path. Use this when you want to see what's inside a file. Do not use this with directory names.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "description": "The relative path of a file in the working directory."
+                }
+            },
+            "required": ["path"]
+        }),
+        function: read_file,
+        needs_approval: false,
+    }
+}
+
+fn read_file(input: Value) -&gt; Result&lt;String, Box&lt;dyn Error&gt;&gt; {
+    let input: ReadFileInput = serde_json::from_value(input)?;
+    let content = fs::read_to_string(checked_path(&amp;input.path)?)?;
+    Ok(content)
+}
+
+#[derive(Deserialize)]
+struct ListFilesInput {
+    path: Option&lt;String&gt;,
+}
+
+fn list_files_tool() -&gt; ToolDefinition {
+    ToolDefinition {
+        name: "list_files",
+        description: "List files and directories at a given path. If no path is provided, lists files in the current directory.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "description": "Optional relative path to list files from. Defaults to current directory if not provided."
+                }
+            }
+        }),
+        function: list_files,
+        needs_approval: false,
+    }
+}
+
+fn list_files(input: Value) -&gt; Result&lt;String, Box&lt;dyn Error&gt;&gt; {
+    let input: ListFilesInput = serde_json::from_value(input)?;
+    let dir = match input.path {
+        Some(path) if !path.is_empty() =&gt; path,
+        _ =&gt; ".".to_string(),
+    };
+    let dir = checked_path(&amp;dir)?;
+
+    let mut files = Vec::new();
+    walk(dir, dir, &amp;mut files)?;
+    files.sort();
+
+    Ok(serde_json::to_string(&amp;files)?)
+}
+
+fn walk(root: &amp;Path, dir: &amp;Path, files: &amp;mut Vec&lt;String&gt;) -&gt; io::Result&lt;()&gt; {
+    for entry in fs::read_dir(dir)? {
+        let path = entry?.path();
+        if path.ends_with(".git") || path.ends_with("target") {
+            continue;
+        }
+
+        let relative = path
+            .strip_prefix(root)
+            .unwrap_or(&amp;path)
+            .display()
+            .to_string();
+        if path.is_dir() {
+            files.push(format!("{relative}/"));
+            walk(root, &amp;path, files)?;
+        } else {
+            files.push(relative);
+        }
+    }
+    Ok(())
+}
+
+#[derive(Deserialize)]
+struct EditFileInput {
+    path: String,
+    old_str: String,
+    new_str: String,
+}
+
+fn edit_file_tool() -&gt; ToolDefinition {
+    ToolDefinition {
+        name: "edit_file",
+        description: "Make edits to a text file.
+
+Replaces 'old_str' with 'new_str' in the given file. 'old_str' and 'new_str' MUST be different from each other. 'old_str' must match exactly one place in the file.
+
+If the file specified with path doesn't exist, it will be created when 'old_str' is empty.",
+        input_schema: json!({
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "description": "The path to the file"
+                },
+                "old_str": {
+                    "type": "string",
+                    "description": "Text to search for - must match exactly and must only have one match exactly"
+                },
+                "new_str": {
+                    "type": "string",
+                    "description": "Text to replace old_str with"
+                }
+            },
+            "required": ["path", "old_str", "new_str"]
+        }),
+        function: edit_file,
+        needs_approval: true,
+    }
+}
+
+fn edit_file(input: Value) -&gt; Result&lt;String, Box&lt;dyn Error&gt;&gt; {
+    let input: EditFileInput = serde_json::from_value(input)?;
+    if input.path.is_empty() || input.old_str == input.new_str {
+        return Err("invalid input parameters".into());
+    }
+    let path = checked_path(&amp;input.path)?;
+
+    let content = match fs::read_to_string(path) {
+        Ok(content) =&gt; content,
+        Err(err) if err.kind() == io::ErrorKind::NotFound &amp;&amp; input.old_str.is_empty() =&gt; {
+            return create_new_file(path, &amp;input.new_str);
+        }
+        Err(err) =&gt; return Err(err.into()),
+    };
+
+    if input.old_str.is_empty() {
+        return Err("the file already exists, so old_str must not be empty".into());
+    }
+
+    match content.matches(&amp;input.old_str).count() {
+        0 =&gt; Err("old_str not found in file".into()),
+        1 =&gt; {
+            fs::write(path, content.replacen(&amp;input.old_str, &amp;input.new_str, 1))?;
+            Ok("OK".to_string())
+        }
+        n =&gt; Err(format!("old_str found {n} times, it must match exactly once").into()),
+    }
+}
+
+fn create_new_file(path: &amp;Path, content: &amp;str) -&gt; Result&lt;String, Box&lt;dyn Error&gt;&gt; {
+    if let Some(dir) = path.parent() {
+        fs::create_dir_all(dir)?;
+    }
+    fs::write(path, content)?;
+    Ok(format!("Successfully created file {}", path.display()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::VecDeque;
+
+    struct FakeModel {
+        replies: VecDeque&lt;Response&gt;,
+        calls: usize,
+        requests: Vec&lt;Vec&lt;Message&gt;&gt;,
+    }
+
+    impl FakeModel {
+        fn new(replies: Vec&lt;Vec&lt;ContentBlock&gt;&gt;) -&gt; FakeModel {
+            FakeModel {
+                replies: replies.into_iter().map(reply).collect(),
+                calls: 0,
+                requests: Vec::new(),
+            }
+        }
+    }
+
+    fn reply(content: Vec&lt;ContentBlock&gt;) -&gt; Response {
+        Response {
+            content,
+            usage: Usage {
+                input_tokens: 100,
+                output_tokens: 50,
+            },
+            stop_reason: None,
+        }
+    }
+
+    impl Model for FakeModel {
+        fn complete(
+            &amp;mut self,
+            conversation: &amp;[Message],
+            _tools: &amp;[ToolDefinition],
+        ) -&gt; Result&lt;Response, Box&lt;dyn Error&gt;&gt; {
+            self.calls += 1;
+            self.requests.push(conversation.to_vec());
+            self.replies
+                .pop_front()
+                .ok_or_else(|| "the fake model ran out of replies".into())
+        }
+    }
+
+    fn tool_use(id: &amp;str, name: &amp;str, input: Value) -&gt; ContentBlock {
+        ContentBlock::ToolUse {
+            id: id.to_string(),
+            name: name.to_string(),
+            input,
+        }
+    }
+
+    fn text(text: &amp;str) -&gt; ContentBlock {
+        ContentBlock::Text {
+            text: text.to_string(),
+        }
+    }
+
+    fn agent(replies: Vec&lt;Vec&lt;ContentBlock&gt;&gt;) -&gt; Agent&lt;FakeModel&gt; {
+        agent_with_approval(
+            replies,
+            Box::new(|name, _| panic!("asked to approve {name}")),
+        )
+    }
+
+    fn agent_with_approval(
+        replies: Vec&lt;Vec&lt;ContentBlock&gt;&gt;,
+        approve: Box&lt;dyn FnMut(&amp;str, &amp;Value) -&gt; bool&gt;,
+    ) -&gt; Agent&lt;FakeModel&gt; {
+        let tools = vec![read_file_tool(), list_files_tool(), edit_file_tool()];
+        Agent::new(FakeModel::new(replies), tools, approve)
+    }
+
+    fn ask(question: &amp;str) -&gt; Vec&lt;Message&gt; {
+        vec![Message {
+            role: Role::User,
+            content: vec![text(question)],
+        }]
+    }
+
+    #[test]
+    fn tool_result_goes_back_to_the_model() {
+        let mut agent = agent(vec![
+            vec![tool_use("t1", "read_file", json!({"path": "Cargo.toml"}))],
+            vec![text("It's a Cargo manifest.")],
+        ]);
+        let mut conversation = ask("What's in Cargo.toml?");
+
+        agent.respond(&amp;mut conversation).unwrap();
+
+        assert_eq!(agent.model.calls, 2);
+        assert_eq!(conversation.len(), 4);
+        assert!(matches!(
+            &amp;conversation[2].content[0],
+            ContentBlock::ToolResult { tool_use_id, content, is_error: false }
+                if tool_use_id == "t1" &amp;&amp; content.contains("[package]")
+        ));
+    }
+
+    #[test]
+    fn paths_outside_the_project_are_refused() {
+        let mut agent = agent(vec![
+            vec![tool_use(
+                "t1",
+                "read_file",
+                json!({"path": "../secret.txt"}),
+            )],
+            vec![text("Done!")],
+        ]);
+        let mut conversation = ask("Read ../secret.txt");
+
+        agent.respond(&amp;mut conversation).unwrap();
+
+        assert!(matches!(
+            &amp;conversation[2].content[0],
+            ContentBlock::ToolResult { is_error: true, content, .. }
+                if content.contains("outside the working directory")
+        ));
+    }
+
+    #[test]
+    fn a_model_that_never_stops_is_stopped() {
+        let replies = (0..20)
+            .map(|i| vec![tool_use(&amp;format!("t{i}"), "list_files", json!({}))])
+            .collect();
+        let mut agent = agent(replies);
+        let mut conversation = ask("Keep looking around forever.");
+
+        agent.respond(&amp;mut conversation).unwrap();
+
+        assert_eq!(agent.model.calls, Limits::default().max_rounds);
+    }
+
+    #[test]
+    fn a_repeated_tool_use_id_is_never_run_twice() {
+        let mut agent = agent(vec![
+            vec![tool_use("t1", "read_file", json!({"path": "Cargo.toml"}))],
+            vec![tool_use("t1", "read_file", json!({"path": "Cargo.toml"}))],
+        ]);
+        let mut conversation = ask("Read Cargo.toml twice.");
+
+        let result = agent.respond(&amp;mut conversation);
+
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("reused tool_use id t1")
+        );
+        let answers = conversation
+            .iter()
+            .flat_map(|message| &amp;message.content)
+            .filter(|block| matches!(block, ContentBlock::ToolResult { tool_use_id, .. } if tool_use_id == "t1"))
+            .count();
+        assert_eq!(answers, 1);
+    }
+
+    #[test]
+    fn edit_file_requires_a_unique_match() {
+        let path = "target/edit-file-test.txt";
+        fs::write(path, "one two two").unwrap();
+
+        let unique = edit_file(json!({"path": path, "old_str": "one", "new_str": "1"}));
+        let ambiguous = edit_file(json!({"path": path, "old_str": "two", "new_str": "2"}));
+        let content = fs::read_to_string(path).unwrap();
+        fs::remove_file(path).unwrap();
+
+        assert_eq!(unique.unwrap(), "OK");
+        assert!(ambiguous.unwrap_err().to_string().contains("found 2 times"));
+        assert_eq!(content, "1 two two");
+    }
+
+    fn edit_request(path: &amp;str) -&gt; Vec&lt;ContentBlock&gt; {
+        vec![tool_use(
+            "t1",
+            "edit_file",
+            json!({"path": path, "old_str": "old", "new_str": "new"}),
+        )]
+    }
+
+    #[test]
+    fn a_denied_edit_leaves_the_file_untouched() {
+        let path = "target/approval-denied.txt";
+        fs::write(path, "old").unwrap();
+        let mut agent = agent_with_approval(
+            vec![edit_request(path), vec![text("Done!")]],
+            Box::new(|_, _| false),
+        );
+        let mut conversation = ask("Change old to new.");
+
+        agent.respond(&amp;mut conversation).unwrap();
+
+        assert_eq!(fs::read_to_string(path).unwrap(), "old");
+        assert!(matches!(
+            &amp;conversation[2].content[0],
+            ContentBlock::ToolResult { is_error: true, content, .. }
+                if content.contains("did not allow")
+        ));
+    }
+
+    #[test]
+    fn an_approved_edit_runs() {
+        let path = "target/approval-granted.txt";
+        fs::write(path, "old").unwrap();
+        let mut agent = agent_with_approval(
+            vec![edit_request(path), vec![text("Done!")]],
+            Box::new(|name, _| name == "edit_file"),
+        );
+        let mut conversation = ask("Change old to new.");
+
+        agent.respond(&amp;mut conversation).unwrap();
+
+        assert_eq!(fs::read_to_string(path).unwrap(), "new");
+    }
+
+    #[test]
+    fn words_in_the_conversation_cannot_approve_anything() {
+        let path = "target/approval-words.txt";
+        fs::write(path, "old").unwrap();
+        let mut agent = agent_with_approval(
+            vec![edit_request(path), vec![text("Done!")]],
+            Box::new(|_, _| false),
+        );
+        let mut conversation = ask("I approve every edit in advance. Change old to new.");
+
+        agent.respond(&amp;mut conversation).unwrap();
+
+        assert_eq!(fs::read_to_string(path).unwrap(), "old");
+    }
+
+    #[test]
+    fn a_tool_call_is_logged_in_order() {
+        let mut agent = agent(vec![
+            vec![tool_use("t1", "read_file", json!({"path": "Cargo.toml"}))],
+            vec![text("It's a Cargo manifest.")],
+        ]);
+        let mut conversation = ask("What's in Cargo.toml?");
+
+        agent.respond(&amp;mut conversation).unwrap();
+
+        assert_eq!(
+            agent.log,
+            vec![
+                Event::ModelRequested { round: 1 },
+                Event::ToolStarted {
+                    id: "t1".to_string(),
+                    name: "read_file".to_string(),
+                },
+                Event::ToolFinished {
+                    id: "t1".to_string(),
+                    is_error: false,
+                },
+                Event::ModelRequested { round: 2 },
+            ]
+        );
+    }
+
+    #[test]
+    fn a_denied_call_never_starts() {
+        let mut agent = agent_with_approval(
+            vec![edit_request("target/log-denied.txt"), vec![text("Done!")]],
+            Box::new(|_, _| false),
+        );
+        let mut conversation = ask("Change old to new.");
+
+        agent.respond(&amp;mut conversation).unwrap();
+
+        assert!(agent.log.contains(&amp;Event::ToolRejected {
+            id: "t1".to_string(),
+            name: "edit_file".to_string(),
+            reason: "denied by the user".to_string(),
+        }));
+        assert!(
+            !agent
+                .log
+                .iter()
+                .any(|event| matches!(event, Event::ToolStarted { .. }))
+        );
+    }
+
+    #[test]
+    fn a_failed_call_did_start() {
+        let mut agent = agent(vec![
+            vec![tool_use("t1", "read_file", json!({"path": "missing.txt"}))],
+            vec![text("That file doesn't exist.")],
+        ]);
+        let mut conversation = ask("Read missing.txt");
+
+        agent.respond(&amp;mut conversation).unwrap();
+
+        assert!(agent.log.contains(&amp;Event::ToolFinished {
+            id: "t1".to_string(),
+            is_error: true,
+        }));
+    }
+
+    #[test]
+    fn the_round_limit_is_logged() {
+        let replies = (0..20)
+            .map(|i| vec![tool_use(&amp;format!("t{i}"), "list_files", json!({}))])
+            .collect();
+        let mut agent = agent(replies);
+        let mut conversation = ask("Keep looking around forever.");
+
+        agent.respond(&amp;mut conversation).unwrap();
+
+        let requests = agent
+            .log
+            .iter()
+            .filter(|event| matches!(event, Event::ModelRequested { .. }))
+            .count();
+        assert_eq!(requests, Limits::default().max_rounds);
+        assert_eq!(
+            agent.log.last(),
+            Some(&amp;Event::LimitReached {
+                limit: Limit::Rounds
+            })
+        );
+    }
+
+    fn finished_session() -&gt; Session {
+        let mut agent = agent(vec![
+            vec![tool_use("t1", "read_file", json!({"path": "Cargo.toml"}))],
+            vec![text("It's a Cargo manifest.")],
+        ]);
+        let mut conversation = ask("What's in Cargo.toml?");
+        agent.respond(&amp;mut conversation).unwrap();
+        Session {
+            version: SESSION_VERSION,
+            conversation,
+            log: agent.log,
+        }
+    }
+
+    fn fresh_path(name: &amp;str) -&gt; &amp;str {
+        let _ = fs::remove_file(name);
+        name
+    }
+
+    #[test]
+    fn a_session_survives_a_round_trip() {
+        let path = Path::new(fresh_path("target/session-round-trip.json"));
+        let session = finished_session();
+
+        save_session(path, &amp;session).unwrap();
+        let loaded = load_session(path).unwrap();
+
+        assert_eq!(loaded, session);
+    }
+
+    #[test]
+    fn saving_never_overwrites_a_session() {
+        let path = Path::new(fresh_path("target/session-no-overwrite.json"));
+        save_session(path, &amp;finished_session()).unwrap();
+        let before = fs::read_to_string(path).unwrap();
+
+        let second = save_session(path, &amp;finished_session());
+
+        assert!(second.is_err());
+        assert_eq!(fs::read_to_string(path).unwrap(), before);
+    }
+
+    #[test]
+    fn a_broken_history_is_rejected() {
+        let mut unanswered = finished_session();
+        unanswered.conversation.remove(2);
+        assert!(
+            validate_session(&amp;unanswered)
+                .unwrap_err()
+                .to_string()
+                .contains("never answered")
+        );
+
+        let mut future = finished_session();
+        future.version = 2;
+        assert!(validate_session(&amp;future).is_err());
+
+        let mut json = serde_json::to_value(finished_session()).unwrap();
+        json["surprise"] = json!(true);
+        assert!(serde_json::from_value::&lt;Session&gt;(json).is_err());
+    }
+
+    #[test]
+    fn replay_shows_what_happened_without_doing_it_again() {
+        let path = "target/replay-must-not-create.txt";
+        let _ = fs::remove_file(path);
+        let session = Session {
+            version: SESSION_VERSION,
+            conversation: vec![
+                ask("Create a file.").remove(0),
+                Message {
+                    role: Role::Assistant,
+                    content: vec![tool_use(
+                        "t1",
+                        "edit_file",
+                        json!({"path": path, "old_str": "", "new_str": "hi"}),
+                    )],
+                },
+                Message {
+                    role: Role::User,
+                    content: vec![ContentBlock::ToolResult {
+                        tool_use_id: "t1".to_string(),
+                        content: format!("Successfully created file {path}"),
+                        is_error: false,
+                    }],
+                },
+            ],
+            log: Vec::new(),
+        };
+
+        let transcript = replay(&amp;session);
+
+        assert!(transcript.contains("tool: edit_file("));
+        assert!(transcript.contains("  -&gt; ok"));
+        assert!(!Path::new(path).exists());
+    }
+
+    fn endless_tool_calls() -&gt; Vec&lt;Vec&lt;ContentBlock&gt;&gt; {
+        (0..20)
+            .map(|i| vec![tool_use(&amp;format!("t{i}"), "list_files", json!({}))])
+            .collect()
+    }
+
+    #[test]
+    fn the_token_budget_stops_the_agent() {
+        let mut agent = agent(endless_tool_calls());
+        agent.limits = Limits {
+            max_tokens: 400,
+            ..Limits::default()
+        };
+        let mut conversation = ask("Keep looking around forever.");
+
+        agent.respond(&amp;mut conversation).unwrap();
+
+        assert_eq!(agent.model.calls, 3);
+        assert_eq!(agent.tokens_used, 450);
+        assert_eq!(
+            agent.log.last(),
+            Some(&amp;Event::LimitReached {
+                limit: Limit::Tokens
+            })
+        );
+    }
+
+    #[test]
+    fn the_token_budget_spans_the_whole_session() {
+        let mut agent = agent(endless_tool_calls());
+        agent.limits = Limits {
+            max_tokens: 400,
+            ..Limits::default()
+        };
+        let mut conversation = ask("Look around.");
+        agent.respond(&amp;mut conversation).unwrap();
+        let calls_before = agent.model.calls;
+
+        conversation.push(ask("Look again.").remove(0));
+        agent.respond(&amp;mut conversation).unwrap();
+
+        assert_eq!(agent.model.calls, calls_before);
+    }
+
+    #[test]
+    fn an_expired_deadline_stops_before_any_request() {
+        let mut agent = agent(endless_tool_calls());
+        agent.limits = Limits {
+            deadline: Some(Duration::ZERO),
+            ..Limits::default()
+        };
+        let mut conversation = ask("Look around.");
+
+        agent.respond(&amp;mut conversation).unwrap();
+
+        assert_eq!(agent.model.calls, 0);
+        assert_eq!(
+            agent.log,
+            vec![Event::LimitReached {
+                limit: Limit::Deadline
+            }]
+        );
+    }
+
+    fn turn(n: usize) -&gt; Vec&lt;Message&gt; {
+        let id = format!("t{n}");
+        vec![
+            ask(&amp;format!("Question {n}")).remove(0),
+            Message {
+                role: Role::Assistant,
+                content: vec![tool_use(&amp;id, "list_files", json!({}))],
+            },
+            Message {
+                role: Role::User,
+                content: vec![ContentBlock::ToolResult {
+                    tool_use_id: id,
+                    content: "[]".to_string(),
+                    is_error: false,
+                }],
+            },
+            Message {
+                role: Role::Assistant,
+                content: vec![text(&amp;format!("Answer {n}"))],
+            },
+        ]
+    }
+
+    fn three_turns() -&gt; Vec&lt;Message&gt; {
+        (1..=3).flat_map(turn).collect()
+    }
+
+    fn pairs_are_complete(messages: &amp;[Message]) -&gt; bool {
+        let blocks: Vec&lt;&amp;ContentBlock&gt; = messages.iter().flat_map(|m| &amp;m.content).collect();
+        let uses: Vec&lt;&amp;String&gt; = blocks
+            .iter()
+            .filter_map(|b| match b {
+                ContentBlock::ToolUse { id, .. } =&gt; Some(id),
+                _ =&gt; None,
+            })
+            .collect();
+        let results: Vec&lt;&amp;String&gt; = blocks
+            .iter()
+            .filter_map(|b| match b {
+                ContentBlock::ToolResult { tool_use_id, .. } =&gt; Some(tool_use_id),
+                _ =&gt; None,
+            })
+            .collect();
+        uses == results
+    }
+
+    #[test]
+    fn old_turns_are_dropped_whole() {
+        let conversation = three_turns();
+
+        let selected = select_context(&amp;conversation, 9);
+
+        assert_eq!(selected, &amp;conversation[4..]);
+    }
+
+    #[test]
+    fn the_latest_turn_is_always_kept() {
+        let conversation = three_turns();
+
+        let selected = select_context(&amp;conversation, 1);
+
+        assert_eq!(selected, &amp;conversation[8..]);
+    }
+
+    #[test]
+    fn tool_calls_keep_their_results_at_every_size() {
+        let conversation = three_turns();
+        for max in 0..=conversation.len() + 1 {
+            let selected = select_context(&amp;conversation, max);
+            assert!(starts_a_turn(&amp;selected[0]), "max = {max}");
+            assert!(pairs_are_complete(selected), "max = {max}");
+        }
+    }
+
+    #[test]
+    fn the_full_history_stays_in_the_conversation() {
+        let mut agent = agent(vec![vec![text("Answer 4")]]);
+        agent.limits = Limits {
+            max_context_messages: 4,
+            ..Limits::default()
+        };
+        let mut conversation = three_turns();
+        conversation.push(ask("Question 4").remove(0));
+
+        agent.respond(&amp;mut conversation).unwrap();
+
+        assert_eq!(agent.model.requests[0].len(), 1);
+        assert_eq!(conversation.len(), 14);
+    }
+
+    const STREAM: &amp;str = r#"event: message_start
+data: {"type":"message_start","message":{"id":"msg_014p7gG3wDgGV9EUtLvnow3U","type":"message","role":"assistant","model":"claude-haiku-4-5","stop_sequence":null,"usage":{"input_tokens":472,"output_tokens":2},"content":[],"stop_reason":null}}
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}
+
+event: ping
+data: {"type": "ping"}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Okay"}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":", let's check the weather."}}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0}
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_01T1x1fJ34qAmk2tNTrN7Up6","name":"get_weather","input":{}}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":1,"delta":{"type":"input_json_delta","partial_json":""}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":1,"delta":{"type":"input_json_delta","partial_json":"{\"location\":"}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":1,"delta":{"type":"input_json_delta","partial_json":" \"San Francisc"}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":1,"delta":{"type":"input_json_delta","partial_json":"o, CA\"}"}}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1}
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null},"usage":{"output_tokens":89}}
+
+event: message_stop
+data: {"type":"message_stop"}
+"#;
+
+    fn stream_lines(text: &amp;str) -&gt; impl Iterator&lt;Item = io::Result&lt;String&gt;&gt; {
+        text.lines()
+            .map(|line| Ok(line.to_string()))
+            .collect::&lt;Vec&lt;_&gt;&gt;()
+            .into_iter()
+    }
+
+    #[test]
+    fn a_complete_stream_assembles_text_and_tool_calls() {
+        let response = assemble(stream_lines(STREAM), &amp;mut |_, _| {}).unwrap();
+
+        assert_eq!(
+            response.content,
+            vec![
+                text("Okay, let's check the weather."),
+                tool_use(
+                    "toolu_01T1x1fJ34qAmk2tNTrN7Up6",
+                    "get_weather",
+                    json!({"location": "San Francisco, CA"}),
+                ),
+            ]
+        );
+        assert_eq!(response.stop_reason.as_deref(), Some("tool_use"));
+        assert_eq!(
+            response.usage,
+            Usage {
+                input_tokens: 472,
+                output_tokens: 89,
+            }
+        );
+    }
+
+    #[test]
+    fn text_is_shown_as_it_arrives() {
+        let mut pieces = Vec::new();
+
+        assemble(stream_lines(STREAM), &amp;mut |index, text| {
+            pieces.push((index, text.to_string()))
+        })
+        .unwrap();
+
+        assert_eq!(
+            pieces,
+            vec![
+                (0, "Okay".to_string()),
+                (0, ", let's check the weather.".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_stream_that_stops_early_is_never_a_reply() {
+        let lines: Vec&lt;&amp;str&gt; = STREAM.lines().collect();
+        for cut in 0..lines.len() {
+            let partial = lines[..cut].join("\n");
+            assert!(
+                assemble(stream_lines(&amp;partial), &amp;mut |_, _| {}).is_err(),
+                "a stream cut after {cut} lines was accepted"
+            );
+        }
+    }
+
+    #[test]
+    fn unknown_events_are_ignored() {
+        let with_extra = STREAM.replace(
+            "event: ping",
+            "event: future\ndata: {\"type\":\"some_future_event\"}\n\nevent: ping",
+        );
+
+        assert!(assemble(stream_lines(&amp;with_extra), &amp;mut |_, _| {}).is_ok());
+    }
+
+    #[test]
+    fn a_cut_off_reply_runs_no_tools() {
+        let path = "target/truncated-must-not-create.txt";
+        let _ = fs::remove_file(path);
+        let mut cut_off = reply(vec![tool_use(
+            "t1",
+            "edit_file",
+            json!({"path": path, "old_str": "", "new_str": "half a fi"}),
+        )]);
+        cut_off.stop_reason = Some("max_tokens".to_string());
+        let mut agent = agent(vec![vec![text("Sorry, I'll try again.")]]);
+        agent.model.replies.push_front(cut_off);
+        let mut conversation = ask("Create a file.");
+
+        agent.respond(&amp;mut conversation).unwrap();
+
+        assert!(!Path::new(path).exists());
+        assert!(matches!(
+            &amp;conversation[2].content[0],
+            ContentBlock::ToolResult { is_error: true, content, .. }
+                if content.contains("max_tokens")
+        ));
+    }
+
+    fn thinking(signature: &amp;str) -&gt; ContentBlock {
+        ContentBlock::Thinking {
+            thinking: String::new(),
+            signature: signature.to_string(),
+            extra: Map::new(),
+        }
+    }
+
+    #[test]
+    fn thinking_blocks_round_trip_unchanged() {
+        let original = json!({
+            "type": "thinking",
+            "thinking": "",
+            "signature": "EosnCkYICxIMMb3LzNrMu",
+            "a_field_from_the_future": {"x": 1}
+        });
+
+        let block: ContentBlock = serde_json::from_value(original.clone()).unwrap();
+
+        assert_eq!(serde_json::to_value(&amp;block).unwrap(), original);
+    }
+
+    #[test]
+    fn thinking_goes_back_unchanged_when_nothing_was_trimmed() {
+        let mut agent = agent(vec![
+            vec![
+                thinking("sig-1"),
+                tool_use("t1", "read_file", json!({"path": "Cargo.toml"})),
+            ],
+            vec![text("It's a Cargo manifest.")],
+        ]);
+        let mut conversation = ask("What's in Cargo.toml?");
+
+        agent.respond(&amp;mut conversation).unwrap();
+
+        assert_eq!(agent.model.requests[1][1].content[0], thinking("sig-1"));
+    }
+
+    #[test]
+    fn trimming_the_history_strips_thinking_from_the_request() {
+        let mut conversation = three_turns();
+        conversation[9].content.insert(0, thinking("sig-old"));
+        conversation.push(ask("Question 4").remove(0));
+        let mut agent = agent(vec![vec![text("Answer 4")]]);
+        agent.limits = Limits {
+            max_context_messages: 6,
+            ..Limits::default()
+        };
+
+        agent.respond(&amp;mut conversation).unwrap();
+
+        let request = &amp;agent.model.requests[0];
+        assert!(request.len() &lt; conversation.len());
+        assert!(
+            !request
+                .iter()
+                .flat_map(|message| &amp;message.content)
+                .any(|block| matches!(block, ContentBlock::Thinking { .. }))
+        );
+        assert_eq!(conversation[9].content[0], thinking("sig-old"));
+    }
+
+    #[test]
+    fn a_streamed_thinking_block_is_assembled() {
+        let stream = r#"data: {"type": "message_start", "message": {"id": "msg_01", "type": "message", "role": "assistant", "content": [], "model": "claude-sonnet-5-5", "stop_reason": null, "stop_sequence": null}}
+data: {"type": "content_block_start", "index": 0, "content_block": {"type": "thinking", "thinking": "", "signature": ""}}
+data: {"type": "content_block_delta", "index": 0, "delta": {"type": "thinking_delta", "thinking": ""}}
+data: {"type": "content_block_delta", "index": 0, "delta": {"type": "signature_delta", "signature": "EqQBCgIYAhIM1gbcDa9GJwZA2b3hGgxBdjrkzLoky3dl1pkiMOYds"}}
+data: {"type": "content_block_stop", "index": 0}
+data: {"type": "content_block_start", "index": 1, "content_block": {"type": "text", "text": ""}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "21"}}
+data: {"type": "content_block_stop", "index": 1}
+data: {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_sequence": null}}
+data: {"type": "message_stop"}"#;
+
+        let response = assemble(stream_lines(stream), &amp;mut |_, _| {}).unwrap();
+
+        assert_eq!(
+            response.content,
+            vec![
+                thinking("EqQBCgIYAhIM1gbcDa9GJwZA2b3hGgxBdjrkzLoky3dl1pkiMOYds"),
+                text("21"),
+            ]
+        );
+    }
+
+    #[test]
+    fn capstone_the_evidence_beats_the_claim() {
+        let a = "target/capstone-a.txt";
+        let b = "target/capstone-b.txt";
+        fs::write(a, "old").unwrap();
+        fs::write(b, "old").unwrap();
+        let session_path = Path::new(fresh_path("target/capstone-session.json"));
+        let edit = |id: &amp;str, path: &amp;str| {
+            tool_use(
+                id,
+                "edit_file",
+                json!({"path": path, "old_str": "old", "new_str": "new"}),
+            )
+        };
+        let mut agent = agent_with_approval(
+            vec![
+                vec![
+                    text("I'll update both files."),
+                    edit("t1", a),
+                    edit("t2", b),
+                ],
+                vec![text("Done! I updated both files.")],
+            ],
+            Box::new(move |_, input| input["path"] == a),
+        );
+        let mut conversation = ask("Change old to new in both files.");
+
+        agent.respond(&amp;mut conversation).unwrap();
+
+        let claim = &amp;conversation[3].content[0];
+        assert_eq!(claim, &amp;text("Done! I updated both files."));
+
+        assert_eq!(fs::read_to_string(a).unwrap(), "new");
+        assert_eq!(fs::read_to_string(b).unwrap(), "old");
+
+        let succeeded = agent
+            .log
+            .iter()
+            .filter(|event| {
+                matches!(
+                    event,
+                    Event::ToolFinished {
+                        is_error: false,
+                        ..
+                    }
+                )
+            })
+            .count();
+        assert_eq!(succeeded, 1);
+        assert!(agent.log.iter().any(|event| matches!(
+            event,
+            Event::ToolRejected { id, .. } if id == "t2"
+        )));
+        assert_eq!(agent.tokens_used, 300);
+
+        let session = Session {
+            version: SESSION_VERSION,
+            conversation,
+            log: agent.log,
+        };
+        save_session(session_path, &amp;session).unwrap();
+        let loaded = load_session(session_path).unwrap();
+        assert_eq!(loaded, session);
+        assert!(replay(&amp;loaded).contains("-&gt; error: the user did not allow this edit_file call"));
+    }
+}</code></pre>
+</details>
+
+<h2 id="concepts">Rust concepts index</h2>
+<table>
+<thead><tr><th>Concept</th><th>Chapter</th><th>Read</th></tr></thead>
+<tbody>
+<tr><td>Closures in a struct field, <code>Box&lt;dyn FnMut&gt;</code>, <code>'static</code> by default</td><td><a target="_self" href="#ch1">1</a></td><td><a href="https://doc.rust-lang.org/book/ch13-01-closures.html">§13.1</a>, <a href="https://doc.rust-lang.org/book/ch18-02-trait-objects.html">§18.2</a></td></tr>
+<tr><td>Borrowing separate fields at once</td><td><a target="_self" href="#ch1">1</a></td><td><a href="https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html">§4.2</a></td></tr>
+<tr><td>Enums as a vocabulary, derived <code>PartialEq</code></td><td><a target="_self" href="#ch2">2</a></td><td><a href="https://doc.rust-lang.org/book/appendix-03-derivable-traits.html">App. C</a></td></tr>
+<tr><td><code>OpenOptions::create_new</code>, <code>Read::take</code>, <code>HashSet</code></td><td><a target="_self" href="#ch3">3</a></td><td><a href="https://doc.rust-lang.org/std/fs/struct.OpenOptions.html">std::fs</a>, <a href="https://doc.rust-lang.org/book/ch08-03-hash-maps.html">§8.3</a></td></tr>
+<tr><td>Slice patterns, let chains, <code>use Trait as _</code></td><td><a target="_self" href="#ch3">3</a></td><td><a href="https://doc.rust-lang.org/book/ch19-03-pattern-syntax.html">§19.3</a></td></tr>
+<tr><td><code>Default</code>, struct update syntax, <code>Instant</code>, <code>Option&lt;Duration&gt;</code></td><td><a target="_self" href="#ch4">4</a></td><td><a href="https://doc.rust-lang.org/book/ch05-01-defining-structs.html#creating-instances-from-other-instances-with-struct-update-syntax">§5.1</a></td></tr>
+<tr><td>Changing a trait's signature</td><td><a target="_self" href="#ch4">4</a></td><td><a href="https://doc.rust-lang.org/book/ch10-02-traits.html">§10.2</a></td></tr>
+<tr><td>Returning a slice of the input, <code>rposition</code>, <code>|&amp;i|</code> patterns</td><td><a target="_self" href="#ch5">5</a></td><td><a href="https://doc.rust-lang.org/book/ch10-03-lifetime-syntax.html#lifetime-elision">§10.3</a></td></tr>
+<tr><td>serde tagged enums, <code>#[serde(other)]</code>, <code>impl Iterator</code> parameters</td><td><a target="_self" href="#ch6">6</a></td><td><a href="https://serde.rs/enum-representations.html">serde</a>, <a href="https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters">§10.2</a></td></tr>
+<tr><td><code>#[serde(flatten)]</code>, declaring a variable before assigning it</td><td><a target="_self" href="#ch7">7</a></td><td><a href="https://serde.rs/attr-flatten.html">serde</a>, <a href="https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html#dangling-references">§4.2</a></td></tr>
+</tbody>
+</table>
+
+<footer>
+<p>Part 2 of <a target="_self" href="index.html">How to Build an Agent in Rust</a>. Several chapters adapt lessons from this project's earlier agent harness course, applied to the real code-editing agent.</p>
+<p>Every chapter's reference solution was compiled with rustc 1.98.1 (edition 2024), serde 1.0.229, serde_json 1.0.151, and ureq 3.4.2, and passes its tests and every earlier chapter's tests without warnings. Each “Break it on purpose” step was run and fails the tests it names. The streaming client was checked end to end against a local server sending the documented event format. It hasn't been run against the live API, so treat your first real session as part of the testing.</p>
+</footer>
+</main>
+</body>
+</html>
